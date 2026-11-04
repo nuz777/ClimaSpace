@@ -6,7 +6,7 @@
 <div class="container py-4">
     <!-- Barra Superior: Buscador, Sugerencias y Selector de Fuente (API vs Simulado) -->
     <div class="row justify-content-center mb-4">
-        <div class="col-lg-10">
+        <div class="col-lg-12">
             <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
                 <!-- Buscador de Ciudades -->
                 <form asp-controller="Home" asp-action="Index" method="get" class="search-wrapper-white flex-grow-1">
@@ -15,7 +15,7 @@
                     <input type="text" 
                            name="city" 
                            class="form-control form-control-lg search-input-white" 
-                           placeholder="Buscar cualquier ciudad (ej. Madrid, Tokio, Bogotá, Nueva York, Miami...)" 
+                           placeholder="Buscar cualquier ciudad (ej. Barranquilla, Medellín, Bogotá, Cartagena, Cali...)" 
                            value="@Model.City"
                            autocomplete="off" />
                     <button type="submit" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
@@ -52,19 +52,153 @@
         </div>
     </div>
 
-    <!-- Layout Principal -->
-    <div class="row g-4">
-        <!-- Columna Izquierda: Tarjeta Hero (Azul Real) y Cinta 24h -->
+    <!-- ====================================================================
+         SECCIÓN 1 (DE PRIMERO / ARRIBA): RADAR DOPPLER + TARJETA DEL TIEMPO AHORA
+         ==================================================================== -->
+    <div class="row g-4 mb-4">
+        <!-- Radar Meteorológico Doppler a Pantalla Ancha -->
         <div class="col-lg-8">
-            <!-- Tarjeta Hero Azul -->
-            <div class="hero-weather-card mb-4">
+            <div class="white-card radar-card h-100">
+                <div class="radar-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="stat-icon-circle" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                            <i class="bi bi-radar"></i>
+                        </span>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-primary">Radar Doppler Meteorológico en Vivo</h5>
+                            <span class="text-muted small">Haz zoom libremente o haz clic en los <strong>puntos azulitos</strong> para cambiar de ciudad</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Botón Escáner Doppler -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRadarSweep" onclick="toggleRadarSweep()">
+                            <i class="bi bi-bullseye me-1"></i>Barrido Doppler
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visor del Mapa Leaflet -->
+                <div class="radar-map-wrapper">
+                    <div id="weatherRadarMap"></div>
+                    <!-- Overlay de Barrido Giratorio -->
+                    <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
+                </div>
+
+                <!-- Barra de Controles del Radar -->
+                <div class="radar-controls-bar">
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnRadarPlay" onclick="toggleRadarAnimation()">
+                            <i class="bi bi-play-fill"></i> Reproducir
+                        </button>
+                        <span class="small text-muted" id="radarFrameTime">
+                            <span class="spinner-border spinner-border-sm text-primary me-1" role="status"></span>
+                            Sincronizando radar Doppler...
+                        </span>
+                    </div>
+
+                    <!-- Leyenda de Intensidad de Lluvia -->
+                    <div class="radar-legend">
+                        <span>Llovizna</span>
+                        <div class="radar-gradient-bar"></div>
+                        <span class="text-danger fw-semibold">Tormenta</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Fuera del Radar: "El tiempo ahora en: [Lugar Seleccionado]" -->
+        <div class="col-lg-4">
+            <div class="selected-city-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold small">
+                            <i class="bi bi-geo-alt-fill me-1"></i>Punto Activo en Radar
+                        </span>
+                        <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
+                            @(Model.IsLiveApi ? "En Vivo" : "Simulado")
+                        </span>
+                    </div>
+
+                    <h6 class="text-muted text-uppercase small fw-bold mb-1">El tiempo ahora en:</h6>
+                    <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2 flex-wrap">
+                        <span>@Model.City</span>
+                        <span class="badge bg-light text-secondary border fs-6 fw-normal">
+                            @(Model.Country.Contains("Colombia", StringComparison.OrdinalIgnoreCase) ? "🇨🇴 Colombia" : Model.Country)
+                        </span>
+                    </h2>
+                    <p class="text-muted small mb-3">
+                        <i class="bi bi-clock me-1 text-primary"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
+                    </p>
+
+                    <!-- Temperatura Actual y Estado -->
+                    <div class="d-flex align-items-center gap-3 my-3 p-3 rounded-4 bg-light border">
+                        <i class="bi @Model.Current.IconClass fs-1 text-warning"></i>
+                        <div>
+                            <div class="d-flex align-items-start">
+                                <span class="fs-1 fw-bold text-dark lh-1" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
+                                    @Model.Current.TemperatureC
+                                </span>
+                                <span class="fs-4 fw-semibold text-primary">°C</span>
+                            </div>
+                            <div class="text-secondary small fw-medium text-capitalize mt-1">
+                                @Model.Current.ConditionDescription
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Métricas Clave Rápidas -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="p-2 rounded-3 bg-light border text-center">
+                                <span class="text-muted small d-block">Sensación</span>
+                                <strong class="text-dark" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
+                                    @Model.Current.FeelsLikeC°C
+                                </strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded-3 bg-light border text-center">
+                                <span class="text-muted small d-block">Humedad</span>
+                                <strong class="text-info">@Model.Current.Humidity%</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded-3 bg-light border text-center">
+                                <span class="text-muted small d-block">Viento</span>
+                                <strong class="text-dark">@Model.Current.WindSpeedKmh km/h</strong>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded-3 bg-light border text-center">
+                                <span class="text-muted small d-block">Calidad Aire</span>
+                                <strong class="text-success small">Buena</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ayuda visual interactiva -->
+                <div class="p-2 rounded-3 bg-primary bg-opacity-10 text-primary small text-center mt-2">
+                    <i class="bi bi-hand-index-thumb me-1"></i>
+                    Haz clic en los <strong>puntos azulitos</strong> del mapa para explorar el clima de cualquier región.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         SECCIÓN 2: TARJETA HERO DETALLADA + PRONÓSTICO EXTENDIDO 7 DÍAS
+         ==================================================================== -->
+    <div class="row g-4 mb-4">
+        <!-- Columna Izquierda: Tarjeta Hero Azul con Cinta de 24 Horas -->
+        <div class="col-lg-8">
+            <div class="hero-weather-card h-100">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                            <h1 class="h2 fw-bold mb-0 text-white">@Model.City</h1>
-                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">
-                                @(Model.Country.Contains("Colombia", StringComparison.OrdinalIgnoreCase) ? "🇨🇴 Colombia" : Model.Country)
-                            </span>
+                            <h2 class="h3 fw-bold mb-0 text-white">@Model.City</h2>
+                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">@Model.Country</span>
                             <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
                                 <i class="bi @(Model.IsLiveApi ? "bi-check-circle-fill" : "bi-gear-wide-connected") me-1"></i>
                                 @(Model.IsLiveApi ? "Datos en Vivo (Open-Meteo)" : "Modo Simulación")
@@ -73,7 +207,7 @@
                         <p class="text-white-50 mb-0 small">
                             <i class="bi bi-pin-map-fill me-1 text-info"></i>Lat: @Model.Latitude, Lon: @Model.Longitude
                             <span class="mx-2">&bull;</span>
-                            <i class="bi bi-clock me-1 text-info"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
+                            <i class="bi bi-clock me-1 text-info"></i>Actualizado para @Model.City
                         </p>
                     </div>
                     <button class="btn btn-sm btn-light bg-opacity-25 text-white border-0 rounded-pill px-3 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#apiModal">
@@ -142,139 +276,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Radar Meteorológico Doppler en Vivo -->
-            <div class="white-card radar-card mb-4">
-                <div class="radar-header">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="stat-icon-circle" style="width: 36px; height: 36px; font-size: 1.1rem;">
-                            <i class="bi bi-radar"></i>
-                        </span>
-                        <div>
-                            <h5 class="fw-bold mb-0 text-primary">Radar Doppler Meteorológico</h5>
-                            <span class="text-muted small">Precipitación, lluvia y ecos satelitales en tiempo real</span>
-                        </div>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Botón Barrido de Radar -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRadarSweep" onclick="toggleRadarSweep()">
-                            <i class="bi bi-bullseye me-1"></i>Escaner Doppler
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Visor del Mapa Leaflet -->
-                <div class="radar-map-wrapper">
-                    <div id="weatherRadarMap"></div>
-                    <!-- Overlay de Barrido Giratorio -->
-                    <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
-                </div>
-
-                <!-- Barra de Controles del Radar -->
-                <div class="radar-controls-bar">
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnRadarPlay" onclick="toggleRadarAnimation()">
-                            <i class="bi bi-play-fill"></i> Reproducir
-                        </button>
-                        <span class="small text-muted" id="radarFrameTime">
-                            <span class="spinner-border spinner-border-sm text-primary me-1" role="status"></span>
-                            Iniciando radar...
-                        </span>
-                    </div>
-
-                    <!-- Leyenda de Intensidad de Lluvia -->
-                    <div class="radar-legend">
-                        <span>Llovizna</span>
-                        <div class="radar-gradient-bar"></div>
-                        <span class="text-danger fw-semibold">Tormenta</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Grilla de Métricas Secundarias (Blanco y Azul) -->
-            <div class="row g-3">
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle">
-                            <i class="bi bi-droplet-half"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Humedad</div>
-                            <div class="stat-value-clean">@Model.Current.Humidity%</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle">
-                            <i class="bi bi-wind"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Viento</div>
-                            <div class="stat-value-clean">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal text-muted">km/h</span></div>
-                            <div class="small text-muted">Dir: @Model.Current.WindDirection</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle text-warning">
-                            <i class="bi bi-brightness-high"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Índice UV</div>
-                            <div class="stat-value-clean">@Model.Current.UvIndex <span class="fs-6 fw-normal text-muted">/ 11</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle text-danger">
-                            <i class="bi bi-speedometer2"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Presión</div>
-                            <div class="stat-value-clean">@Model.Current.PressureHpa <span class="fs-6 fw-normal text-muted">hPa</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle text-success">
-                            <i class="bi bi-eye"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Visibilidad</div>
-                            <div class="stat-value-clean">@Model.Current.VisibilityKm <span class="fs-6 fw-normal text-muted">km</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle">
-                            <i class="bi bi-thermometer-half"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">P. de Rocío</div>
-                            <div class="stat-value-clean" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
-                                @Model.Current.DewPointC°C
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6">
-                    <div class="stat-box-white">
-                        <div class="stat-icon-circle text-info">
-                            <i class="bi bi-shield-check"></i>
-                        </div>
-                        <div>
-                            <div class="stat-label-clean">Calidad del Aire</div>
-                            <div class="stat-value-clean fs-6 text-primary">@Model.Current.AirQuality</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Columna Derecha: Pronóstico Semanal (7 Días) -->
@@ -322,19 +323,91 @@
                         </div>
                     }
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Tarjeta Informativa de la Fuente en el sidebar -->
-                <div class="mt-4 p-3 rounded-4 bg-light border">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <i class="bi bi-info-circle-fill text-primary"></i>
-                        <span class="fw-bold small text-dark">Fuente del Reporte</span>
+    <!-- ====================================================================
+         SECCIÓN 3: GRILLA DE MÉTRICAS SECUNDARIAS
+         ==================================================================== -->
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle">
+                    <i class="bi bi-droplet-half"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Humedad</div>
+                    <div class="stat-value-clean">@Model.Current.Humidity%</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle">
+                    <i class="bi bi-wind"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Viento</div>
+                    <div class="stat-value-clean">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal text-muted">km/h</span></div>
+                    <div class="small text-muted">Dir: @Model.Current.WindDirection</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle text-warning">
+                    <i class="bi bi-brightness-high"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Índice UV</div>
+                    <div class="stat-value-clean">@Model.Current.UvIndex <span class="fs-6 fw-normal text-muted">/ 11</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle text-danger">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Presión</div>
+                    <div class="stat-value-clean">@Model.Current.PressureHpa <span class="fs-6 fw-normal text-muted">hPa</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle text-success">
+                    <i class="bi bi-eye"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Visibilidad</div>
+                    <div class="stat-value-clean">@Model.Current.VisibilityKm <span class="fs-6 fw-normal text-muted">km</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle">
+                    <i class="bi bi-thermometer-half"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">P. de Rocío</div>
+                    <div class="stat-value-clean" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
+                        @Model.Current.DewPointC°C
                     </div>
-                    <div class="small text-muted mb-2">
-                        @Model.DataSource
-                    </div>
-                    <div class="small text-secondary">
-                        Latitud: <code>@Model.Latitude</code> &bull; Longitud: <code>@Model.Longitude</code>
-                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="stat-box-white">
+                <div class="stat-icon-circle text-info">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                    <div class="stat-label-clean">Calidad del Aire</div>
+                    <div class="stat-value-clean fs-6 text-primary">@Model.Current.AirQuality</div>
                 </div>
             </div>
         </div>
@@ -354,20 +427,13 @@
             <div class="modal-body p-4">
                 <h6 class="fw-bold text-dark mb-2"><i class="bi bi-broadcast text-success me-1"></i> 1. Proveedor Activo: Open-Meteo Live API</h6>
                 <p class="text-secondary small mb-3">
-                    ClimaSpace ahora consulta datos reales en vivo a través de la API abierta de <strong>Open-Meteo</strong>. Realiza geocodificación global por nombre de ciudad y obtiene variables actuales, curvas horarias de 24 horas y pronóstico de 7 días sin requerir ninguna clave de suscripción.
+                    ClimaSpace consulta datos reales en vivo a través de la API abierta de <strong>Open-Meteo</strong>. Realiza geocodificación global y obtiene curvas horarias de 24 horas y pronóstico de 7 días sin requerir ninguna clave de suscripción.
                 </p>
 
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-radar text-primary me-1"></i> 2. Radar Meteorológico: RainViewer Doppler</h6>
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-radar text-primary me-1"></i> 2. Radar Meteorológico Doppler</h6>
                 <p class="text-secondary small mb-3">
-                    El mapa satelital se alimenta de la API libre de <strong>RainViewer</strong> y mapas <strong>CartoDB</strong> sobre <strong>Leaflet.js</strong>. Proporciona capas de precipitación de radar Doppler animadas cada 10 minutos.
+                    El mapa satelital combina mosaicos <strong>Esri Light Gray Canvas</strong> (sin marcas de agua) y la API de <strong>RainViewer</strong> sobre <strong>Leaflet.js</strong> con persistencia en todos los niveles de zoom y ecos reflectivos dinámicos de precipitación.
                 </p>
-
-                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-code-slash text-primary me-1"></i> 3. Arquitectura Desacoplada (Inversión de Control)</h6>
-                <p class="text-secondary small mb-2">
-                    Si en el futuro deseas utilizar <strong>OpenWeatherMap</strong> u otro proveedor privado, la aplicación implementa el contrato <code>IWeatherService</code>:
-                </p>
-                <pre class="bg-dark text-info p-3 rounded-3 small mb-3"><code>// Solo reemplazas la inyección en Program.cs:
-builder.Services.AddScoped&lt;IWeatherService, OpenWeatherMapService&gt;();</code></pre>
             </div>
             <div class="modal-footer border-top bg-light" style="border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
                 <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
@@ -378,6 +444,7 @@ builder.Services.AddScoped&lt;IWeatherService, OpenWeatherMapService&gt;();</cod
 
 <!-- Inyección de Datos para Inicializar el Radar Leaflet en JavaScript -->
 <script>
+    window.currentProvider = "@Model.Provider";
     window.cityCoordinates = {
         lat: @Model.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
         lon: @Model.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
