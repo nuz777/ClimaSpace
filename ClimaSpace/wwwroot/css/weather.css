@@ -243,6 +243,7 @@ main {
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     transition: all 0.2s ease;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 .city-pill-white:hover,
@@ -275,6 +276,7 @@ main {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
 }
 
 .provider-pill.active {
@@ -305,7 +307,7 @@ main {
     position: relative;
     width: 100%;
     height: 440px;
-    background: #f1f5f9;
+    background: #d8e2ec;
 }
 
 #weatherRadarMap {
@@ -363,20 +365,45 @@ main {
     gap: 0.75rem;
 }
 
-.radar-legend {
+/* Leyenda Segmentada con Guía Completa de Colores */
+.radar-legend-group {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.78rem;
-    color: var(--color-text-muted);
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-.radar-gradient-bar {
-    width: 120px;
-    height: 8px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, #10b981 0%, #eab308 35%, #f97316 70%, #ef4444 100%);
+.radar-color-segments {
+    display: flex;
+    align-items: center;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+.radar-color-segments:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+}
+
+.radar-color-pill {
+    padding: 0.22rem 0.65rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.radar-color-pill.c-green { background-color: #10b981; }
+.radar-color-pill.c-yellow { background-color: #eab308; color: #0f172a; }
+.radar-color-pill.c-orange { background-color: #f97316; }
+.radar-color-pill.c-red { background-color: #ef4444; }
+.radar-color-pill.c-purple { background-color: #8b5cf6; }
 
 /* Puntos Azulitos Interactivos de Ciudades en el Radar */
 .radar-city-dot {
@@ -421,16 +448,39 @@ main {
 
 @keyframes echo-expand {
     0% {
-        transform: scale(0.6);
+        transform: scale(0.75);
         opacity: 0.85;
     }
     50% {
         opacity: 0.5;
     }
     100% {
-        transform: scale(1.5);
+        transform: scale(1.45);
         opacity: 0;
     }
+}
+
+/* Modal Guía de Colores Doppler */
+.doppler-guide-item {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--color-card-border);
+    margin-bottom: 0.65rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.doppler-badge-square {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1rem;
 }
 
 /* ==========================================================================

@@ -90,7 +90,7 @@
                 <!-- Barra de Controles del Radar -->
                 <div class="radar-controls-bar">
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnRadarPlay" onclick="toggleRadarAnimation()">
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" id="btnRadarPlay" onclick="toggleRadarAnimation()">
                             <i class="bi bi-play-fill"></i> Reproducir
                         </button>
                         <span class="small text-muted" id="radarFrameTime">
@@ -99,11 +99,18 @@
                         </span>
                     </div>
 
-                    <!-- Leyenda de Intensidad de Lluvia -->
-                    <div class="radar-legend">
-                        <span>Llovizna</span>
-                        <div class="radar-gradient-bar"></div>
-                        <span class="text-danger fw-semibold">Tormenta</span>
+                    <!-- Leyenda Segmentada con Guía Completa de Colores Doppler -->
+                    <div class="radar-legend-group">
+                        <div class="radar-color-segments" role="button" data-bs-toggle="modal" data-bs-target="#dopplerGuideModal" title="Clic para ver la escala y significado de cada color">
+                            <span class="radar-color-pill c-green">Verde</span>
+                            <span class="radar-color-pill c-yellow">Amarillo</span>
+                            <span class="radar-color-pill c-orange">Naranja</span>
+                            <span class="radar-color-pill c-red">Rojo</span>
+                            <span class="radar-color-pill c-purple">Púrpura</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#dopplerGuideModal">
+                            <i class="bi bi-palette-fill me-1"></i>Guía de Colores
+                        </button>
                     </div>
                 </div>
             </div>
@@ -436,6 +443,98 @@
                 <p class="text-secondary small mb-3">
                     El mapa satelital combina mosaicos <strong>Esri Light Gray Canvas</strong> (sin marcas de agua) y la API de <strong>RainViewer</strong> sobre <strong>Leaflet.js</strong> con persistencia en todos los niveles de zoom y ecos reflectivos dinámicos de precipitación.
                 </p>
+            </div>
+            <div class="modal-footer border-top bg-light" style="border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+                <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Guía de Colores del Radar Doppler Meteorológico -->
+<div class="modal fade" id="dopplerGuideModal" tabindex="-1" aria-labelledby="dopplerGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-bottom bg-light" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+                <h5 class="modal-title d-flex align-items-center gap-2 text-primary fw-bold" id="dopplerGuideModalLabel">
+                    <i class="bi bi-palette-fill"></i> Guía de Colores del Radar Doppler Meteorológico
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-secondary small mb-4">
+                    El radar Doppler emite pulsos electromagnéticos y mide la reflectividad en decibeles (<strong>dBZ</strong>) devuelta por hidrometeoros (gotas de agua, llovizna o granizo). A mayor valor en dBZ, mayor es la intensidad y severidad de la precipitación:
+                </p>
+
+                <!-- 1. Verde -->
+                <div class="doppler-guide-item">
+                    <div class="doppler-badge-square" style="background-color: #10b981;">
+                        <i class="bi bi-cloud-drizzle-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <strong class="text-success fs-6">🟩 Verde — Llovizna y Lluvia Ligera</strong>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">5 - 25 dBZ | &lt; 2.5 mm/h</span>
+                        </div>
+                        <p class="text-muted small mb-0">Precipitación leve o chubascos dispersos de baja intensidad. No representa riesgo para el tráfico vehicular ni acumulación de agua.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Amarillo -->
+                <div class="doppler-guide-item">
+                    <div class="doppler-badge-square" style="background-color: #eab308; color: #0f172a;">
+                        <i class="bi bi-cloud-rain-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <strong class="text-warning-emphasis fs-6">🟨 Amarillo — Lluvia Moderada</strong>
+                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle">25 - 35 dBZ | 2.5 - 7.5 mm/h</span>
+                        </div>
+                        <p class="text-muted small mb-0">Lluvia constante y continua. Reduce ligeramente la visibilidad en carreteras y humedece rápidamente el asfalto.</p>
+                    </div>
+                </div>
+
+                <!-- 3. Naranja -->
+                <div class="doppler-guide-item">
+                    <div class="doppler-badge-square" style="background-color: #f97316;">
+                        <i class="bi bi-cloud-rain-heavy-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <strong class="fs-6" style="color: #ea580c;">🟧 Naranja — Lluvia Fuerte</strong>
+                            <span class="badge bg-warning-subtle text-danger border border-warning-subtle">35 - 45 dBZ | 7.5 - 15 mm/h</span>
+                        </div>
+                        <p class="text-muted small mb-0">Aguacero intenso con gotas gruesas. Puede generar encharcamientos rápidos en avenidas y disminución importante de la visibilidad.</p>
+                    </div>
+                </div>
+
+                <!-- 4. Rojo -->
+                <div class="doppler-guide-item">
+                    <div class="doppler-badge-square" style="background-color: #ef4444;">
+                        <i class="bi bi-cloud-lightning-rain-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <strong class="text-danger fs-6">🟥 Rojo — Lluvia Torrencial / Tormenta</strong>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">45 - 55 dBZ | 15 - 30 mm/h</span>
+                        </div>
+                        <p class="text-muted small mb-0">Precipitación torrencial con ráfagas de viento y actividad eléctrica frecuente. Alto riesgo de inundaciones repentinas.</p>
+                    </div>
+                </div>
+
+                <!-- 5. Púrpura -->
+                <div class="doppler-guide-item">
+                    <div class="doppler-badge-square" style="background-color: #8b5cf6;">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <strong class="fs-6" style="color: #7c3aed;">🟪 Púrpura — Tormenta Severa / Granizo</strong>
+                            <span class="badge border" style="background-color: #ede9fe; color: #6d28d9; border-color: #c4b5fd !important;">&gt; 55 dBZ | &gt; 30 mm/h</span>
+                        </div>
+                        <p class="text-muted small mb-0">Fenómeno meteorológico severo: núcleo de tormenta convectiva profunda de alta energía, probabilidad alta de caída de granizo y vientos destructivos.</p>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer border-top bg-light" style="border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
                 <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>

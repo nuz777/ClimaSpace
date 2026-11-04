@@ -366,7 +366,7 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         attributionControl: false
     });
 
-    // 1. Capa Base: Esri Light Gray Canvas (Nativo y sin marcas de agua)
+    // 1. Capa Base Principal: Esri Light Gray Canvas (Nativo, limpio, sin marcas de agua y SIN saturación de departamentos)
     const esriLightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         maxNativeZoom: 16,
         maxZoom: 18,
@@ -374,33 +374,26 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         attribution: '&copy; Esri, HERE'
     }).addTo(radarMap);
 
-    // 2. Capa de Nombres y Etiquetas sobre el mapa
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-        maxNativeZoom: 16,
+    // 2. Capa Alternativa: Satélite Meteorológico HD (Completamente limpio, sin texto de departamentos)
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxNativeZoom: 18,
         maxZoom: 18,
         minZoom: 2,
-        zIndex: 50
-    }).addTo(radarMap);
-
-    // 3. Opción de mapa alternativo: OpenStreetMap
-    const osmBase = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        minZoom: 2,
-        attribution: '&copy; OpenStreetMap'
+        attribution: '&copy; Esri World Imagery'
     });
 
     L.control.layers({
-        "Mapa Radar Claro": esriLightBase,
-        "OpenStreetMap": osmBase
+        "Mapa Radar Limpio (Sin texto)": esriLightBase,
+        "Satélite Meteorológico HD": esriSatellite
     }, null, { position: 'topright' }).addTo(radarMap);
 
-    // 4. Agregar PUNTOS AZULITOS interactivos en el mapa
+    // 3. Agregar PUNTOS AZULITOS interactivos en el mapa
     addRadarCityDots(cityName);
 
-    // 5. Graficación visible de Ecos de Lluvia y Chubascos
+    // 4. Graficación visible de Ecos Doppler con todos los colores
     renderPrecipitationEchoes(lat, lon, conditionDesc);
 
-    // 6. Cargar datos de Radar RainViewer
+    // 5. Cargar datos de Radar RainViewer
     loadRainViewerRadarLayers();
 }
 
@@ -460,7 +453,7 @@ function highlightActiveCityDot(cityName) {
 }
 
 // --------------------------------------------------------------------------
-// 5. Visualización Gráfica de Ecos de Lluvia, Chubascos y Tormentas
+// 5. Visualización Gráfica Completa de Ecos Doppler (5 Niveles: Verde -> Púrpura)
 // --------------------------------------------------------------------------
 function renderPrecipitationEchoes(lat, lon, conditionDesc) {
     if (!radarMap) return;
@@ -476,40 +469,67 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc) {
                              desc.includes("torment") || 
                              desc.includes("drizzle") || 
                              desc.includes("rain") ||
-                             desc.includes("shower");
+                             desc.includes("shower") ||
+                             desc.includes("llovizn");
 
     if (hasPrecipitation) {
-        const isHeavy = desc.includes("intens") || desc.includes("torment") || desc.includes("heavy");
+        const isSevere = desc.includes("torment") || desc.includes("granizo") || desc.includes("intens");
+        const baseRadius = isSevere ? 36000 : 28000;
 
-        L.circle([lat, lon], {
-            radius: isHeavy ? 28000 : 18000,
-            color: '#10b981',
+        // 1. Capa Exterior: VERDE (#10b981) - Llovizna y Lluvia Ligera (5 - 25 dBZ)
+        const greenEcho = L.circle([lat, lon], {
+            radius: baseRadius,
+            color: '#059669',
             fillColor: '#10b981',
-            fillOpacity: 0.32,
-            weight: 1.5,
-            className: 'radar-rain-echo-pulse'
-        }).addTo(rainEchoGroup);
-
-        L.circle([lat, lon], {
-            radius: isHeavy ? 18000 : 10000,
-            color: '#eab308',
-            fillColor: '#eab308',
-            fillOpacity: 0.45,
-            weight: 1.5
-        }).addTo(rainEchoGroup);
-
-        L.circle([lat, lon], {
-            radius: isHeavy ? 9000 : 4500,
-            color: '#ef4444',
-            fillColor: '#f97316',
-            fillOpacity: 0.6,
+            fillOpacity: 0.38,
             weight: 2
         }).addTo(rainEchoGroup);
+        greenEcho.bindTooltip("🟩 <strong>Eco Verde:</strong> Llovizna / Lluvia ligera (5 - 25 dBZ)", { direction: 'top' });
+
+        // 2. Capa Media: AMARILLO (#eab308) - Lluvia Moderada (25 - 35 dBZ)
+        const yellowEcho = L.circle([lat, lon], {
+            radius: Math.round(baseRadius * 0.65),
+            color: '#ca8a04',
+            fillColor: '#eab308',
+            fillOpacity: 0.50,
+            weight: 2
+        }).addTo(rainEchoGroup);
+        yellowEcho.bindTooltip("🟨 <strong>Eco Amarillo:</strong> Lluvia moderada (25 - 35 dBZ)", { direction: 'top' });
+
+        // 3. Capa Interior: NARANJA (#f97316) - Lluvia Fuerte (35 - 45 dBZ)
+        const orangeEcho = L.circle([lat, lon], {
+            radius: Math.round(baseRadius * 0.42),
+            color: '#ea580c',
+            fillColor: '#f97316',
+            fillOpacity: 0.62,
+            weight: 2
+        }).addTo(rainEchoGroup);
+        orangeEcho.bindTooltip("🟧 <strong>Eco Naranja:</strong> Lluvia fuerte (35 - 45 dBZ)", { direction: 'top' });
+
+        // 4. Capa Intensa: ROJO (#ef4444) - Lluvia Torrencial / Tormenta (45 - 55 dBZ)
+        const redEcho = L.circle([lat, lon], {
+            radius: Math.round(baseRadius * 0.22),
+            color: '#dc2626',
+            fillColor: '#ef4444',
+            fillOpacity: 0.75,
+            weight: 2
+        }).addTo(rainEchoGroup);
+        redEcho.bindTooltip("🟥 <strong>Eco Rojo:</strong> Lluvia torrencial / Tormenta (45 - 55 dBZ)", { direction: 'top' });
+
+        // 5. Núcleo Convectivo: PÚRPURA (#8b5cf6) - Tormenta Severa / Granizo (> 55 dBZ)
+        const purpleEcho = L.circle([lat, lon], {
+            radius: Math.round(baseRadius * 0.10),
+            color: '#7c3aed',
+            fillColor: '#8b5cf6',
+            fillOpacity: 0.88,
+            weight: 2
+        }).addTo(rainEchoGroup);
+        purpleEcho.bindTooltip("🟪 <strong>Eco Púrpura:</strong> Tormenta severa / Granizo (&gt; 55 dBZ)", { direction: 'top' });
     }
 }
 
 // --------------------------------------------------------------------------
-// 6. Carga de Fotogramas del Radar Doppler (RainViewer API)
+// 6. Carga de Fotogramas del Radar Doppler (RainViewer API con Paleta Universal 1)
 // --------------------------------------------------------------------------
 async function loadRainViewerRadarLayers() {
     const timeDisplay = document.getElementById('radarFrameTime');
@@ -538,7 +558,8 @@ async function loadRainViewerRadarLayers() {
         currentRadarIndex = radarFrames.length - 1;
 
         const initialPath = radarFrames[currentRadarIndex].path;
-        const initialUrl = `${radarHost}${initialPath}/256/{z}/{x}/{y}/4/1_1.png`;
+        // Paleta 1 = Universal Doppler (Verde -> Amarillo -> Naranja -> Rojo -> Púrpura)
+        const initialUrl = `${radarHost}${initialPath}/256/{z}/{x}/{y}/1/1_1.png`;
 
         if (radarTileLayer) {
             radarMap.removeLayer(radarTileLayer);
@@ -581,7 +602,8 @@ function showRadarFrame(index) {
 
     currentRadarIndex = index;
     const frame = radarFrames[index];
-    const newUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`;
+    // Paleta 1 = Universal Doppler
+    const newUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/1/1_1.png`;
 
     radarTileLayer.setUrl(newUrl);
     updateRadarTimeDisplay(frame.time);
