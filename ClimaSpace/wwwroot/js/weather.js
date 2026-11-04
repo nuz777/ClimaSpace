@@ -84,8 +84,8 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
     // Configuración robusta de Leaflet para soportar zoom in y zoom out sin romper capas
     radarMap = L.map('weatherRadarMap', {
         center: [lat, lon],
-        zoom: 8,
-        minZoom: 3,
+        zoom: 7,
+        minZoom: 2,
         maxZoom: 18,
         zoomControl: true,
         attributionControl: false
@@ -272,13 +272,14 @@ async function loadRainViewerRadarLayers() {
         }
 
         radarTileLayer = L.tileLayer(initialUrl, {
-            opacity: 0.82,
+            opacity: 0.85,
             zIndex: 100,
-            maxNativeZoom: 12,
-            maxZoom: 18,
-            minNativeZoom: 2,
+            minNativeZoom: 1,
             minZoom: 2,
-            keepBuffer: 6,
+            maxNativeZoom: 7, // RainViewer limita su API libre a zoom 7. Al fijar maxNativeZoom: 7, Leaflet reescala los mosaicos automáticamente y NUNCA pide zooms mayores, eliminando 'Zoom level not supported'
+            maxZoom: 18,
+            tileSize: 256,
+            keepBuffer: 8,
             updateWhenZooming: false,
             updateWhenIdle: true
         }).addTo(radarMap);

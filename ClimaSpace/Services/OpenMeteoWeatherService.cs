@@ -10,6 +10,7 @@ public class OpenMeteoWeatherService : IWeatherService
     private readonly HttpClient _httpClient;
     private readonly SimulatedWeatherService _fallbackService;
     private readonly ILogger<OpenMeteoWeatherService> _logger;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (WeatherReport Report, DateTime ExpiresAt)> Cache = new(StringComparer.OrdinalIgnoreCase);
 
     public OpenMeteoWeatherService(
         HttpClient httpClient, 
@@ -17,7 +18,7 @@ public class OpenMeteoWeatherService : IWeatherService
         ILogger<OpenMeteoWeatherService> logger)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(8);
+        _httpClient.Timeout = TimeSpan.FromSeconds(15);
         _fallbackService = fallbackService;
         _logger = logger;
     }
@@ -35,6 +36,12 @@ public class OpenMeteoWeatherService : IWeatherService
         if (string.Equals(cityName, "Colombia", StringComparison.OrdinalIgnoreCase))
         {
             cityName = "Bogotá, Colombia";
+        }
+
+        // Revisar caché en memoria (3 minutos de vigencia para respuestas instantáneas)
+        if (Cache.TryGetValue(cityName, out var cached) && DateTime.UtcNow < cached.ExpiresAt)
+        {
+            return cached.Report;
         }
 
         try
@@ -213,7 +220,7 @@ public class OpenMeteoWeatherService : IWeatherService
             double dewPoint = Math.Round(temp - ((100 - humidity) / 5.0), 1);
             var popularCities = await _fallbackService.GetPopularCitiesAsync();
 
-            return new WeatherReport
+            var report = new WeatherReport
             {
                 City = resolvedName,
                 Country = country,
@@ -247,6 +254,11 @@ public class OpenMeteoWeatherService : IWeatherService
                 Daily = dailyForecasts,
                 PopularCities = popularCities.Take(8).ToList()
             };
+
+            Cache[cityName] = (report, DateTime.UtcNow.AddMinutes(5));
+            Cache[resolvedName] = (report, DateTime.UtcNow.AddMinutes(5));
+
+            return report;
         }
         catch (Exception ex)
         {
