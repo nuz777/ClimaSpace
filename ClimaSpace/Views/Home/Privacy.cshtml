@@ -1,0 +1,58 @@
+@{
+    ViewData["Title"] = "Acerca de & Privacidad";
+}
+
+<script>
+    document.body.className = 'weather-app-body theme-night';
+</script>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="glass-card p-4 p-md-5">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <span class="brand-icon-wrapper" style="width: 48px; height: 48px; font-size: 1.5rem;">
+                        <i class="bi bi-shield-lock-fill text-info"></i>
+                    </span>
+                    <div>
+                        <h1 class="h3 fw-bold mb-0">Acerca de ClimaSpace &amp; Privacidad</h1>
+                        <p class="text-white-50 mb-0 small">Transparencia y diseño de software</p>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-white fw-bold"><i class="bi bi-clouds-fill me-2 text-primary"></i>¿Qué es ClimaSpace?</h5>
+                    <p class="text-white-75">
+                        ClimaSpace es una plataforma meteorológica moderna desarrollada sobre <strong>ASP.NET Core (.NET 10)</strong>, diseñada con una arquitectura desacoplada basada en servicios e interfaces.
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-white fw-bold"><i class="bi bi-cpu-fill me-2 text-warning"></i>Motor de Simulación Coherente</h5>
+                    <p class="text-white-75">
+                        En su etapa inicial, la aplicación genera proyecciones climáticas procedurales y determinísticas considerando:
+                    </p>
+                    <ul class="text-white-75">
+                        <li>Zonas horarias y ciclos térmicos senoidales basados en la posición solar local.</li>
+                        <li>Coherencia bio-física (relación entre lluvia, nubosidad, presión y humedad).</li>
+                        <li>Generación matemática reproducible para cualquier ciudad global.</li>
+                    </ul>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-white fw-bold"><i class="bi bi-eye-slash-fill me-2 text-success"></i>Política de Privacidad</h5>
+                    <p class="text-white-75">
+                        ClimaSpace no almacena credenciales personales, cookies de rastreo publicitario ni telemetría invasiva.
+                        Tus preferencias de visualización (como la escala de temperatura °C / °F) se gestionan de forma segura y local en tu navegador.
+                    </p>
+                </div>
+
+                <div class="pt-3 border-top border-white-10 text-center text-md-start">
+                    <a asp-action="Index" class="btn btn-outline-light rounded-pill px-4">
+                        <i class="bi bi-arrow-left me-2"></i>Volver al Monitor Climático
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

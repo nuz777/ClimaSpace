@@ -1,0 +1,348 @@
+/* ClimaSpace - Estilos Modernos de la Aplicación Meteorológica */
+
+:root {
+    --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --glass-bg: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+    --glass-blur: blur(16px);
+    --text-primary: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.75);
+}
+
+body.weather-app-body {
+    font-family: var(--font-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    transition: background 0.8s ease-in-out;
+}
+
+/* Temas dinámicos de fondo según el clima */
+body.theme-sunny {
+    background: linear-gradient(135deg, #1e528e 0%, #3a7bd5 40%, #f3904f 100%);
+}
+
+body.theme-night {
+    background: linear-gradient(135deg, #0b0f19 0%, #162035 50%, #1a1a2e 100%);
+}
+
+body.theme-partly-cloudy {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #2980b9 100%);
+}
+
+body.theme-cloudy {
+    background: linear-gradient(135deg, #373b44 0%, #4286f4 60%, #536976 100%);
+}
+
+body.theme-rainy {
+    background: linear-gradient(135deg, #232526 0%, #414345 40%, #2c3e50 100%);
+}
+
+body.theme-stormy {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+body.theme-snow {
+    background: linear-gradient(135deg, #606c88 0%, #3f4c6b 50%, #7986cb 100%);
+}
+
+body.theme-fog,
+body.theme-default {
+    background: linear-gradient(135deg, #29323c 0%, #485563 100%);
+}
+
+main {
+    flex: 1;
+}
+
+/* Glassmorphism Navigation */
+.bg-glass-nav {
+    background: rgba(18, 25, 38, 0.65) !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.brand-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.pulse-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #0dcaf0;
+    box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7);
+    animation: pulse-ring 1.8s infinite;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(13, 202, 240, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
+}
+
+/* Selector de Unidades */
+.unit-toggle .btn {
+    border-radius: 20px;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.unit-toggle .btn.active {
+    background: #ffffff;
+    color: #111827;
+    border-color: #ffffff;
+}
+
+/* Tarjetas Vidrio (Glassmorphism) */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--glass-shadow);
+    color: var(--text-primary);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass-card:hover {
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
+}
+
+.glass-hero {
+    padding: 2.2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+    pointer-events: none;
+}
+
+/* Buscador de Ciudad */
+.search-wrapper {
+    position: relative;
+}
+
+.search-input {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid var(--glass-border);
+    color: #ffffff !important;
+    border-radius: 50px;
+    padding: 0.75rem 1.25rem 0.75rem 3rem;
+    backdrop-filter: var(--glass-blur);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.search-input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1.15rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.city-pill {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.city-pill:hover,
+.city-pill.active {
+    background: #ffffff;
+    color: #1a1a2e;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Icono Flotante del Clima Principal */
+.weather-hero-icon {
+    font-size: 5.5rem;
+    display: inline-block;
+    animation: float-icon 4s ease-in-out infinite;
+    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+}
+
+@keyframes float-icon {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+}
+
+.temp-large {
+    font-size: 4.8rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+}
+
+.temp-unit {
+    font-size: 2.2rem;
+    vertical-align: super;
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+/* Stat Cards (Grid Métricas) */
+.stat-box {
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: transform 0.2s ease;
+}
+
+.stat-box:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.stat-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Pronóstico por Horas (Ribbon Horizontal) */
+.hourly-scroll {
+    display: flex;
+    gap: 0.85rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+.hourly-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.hourly-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+.hourly-card {
+    min-width: 82px;
+    text-align: center;
+    padding: 1rem 0.6rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.hourly-card:hover {
+    background: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
+}
+
+/* Pronóstico Diario (Lista con barras) */
+.daily-row {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease;
+}
+
+.daily-row:last-child {
+    border-bottom: none;
+}
+
+.daily-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+}
+
+.temp-bar-bg {
+    height: 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+
+.temp-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #0dcaf0, #ffc107);
+}
+
+/* Footer Glass */
+.footer-glass {
+    background: rgba(10, 15, 25, 0.7);
+    backdrop-filter: var(--glass-blur);
+}
+
+.border-white-10 {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Modal Info Arquitectura */
+.modal-content.glass-card {
+    background: rgba(20, 30, 45, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}

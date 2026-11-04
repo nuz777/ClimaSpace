@@ -1,0 +1,24 @@
+## Build and Output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## IDEs and Editors
+.idea/
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Operating System files
+.DS_Store
+Thumbs.db
+
+## Dotnet Crash & Log
+*.crash
+*.tmp

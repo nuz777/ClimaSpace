@@ -1,0 +1,302 @@
+@model ClimaSpace.Models.WeatherReport
+@{
+    ViewData["Title"] = $"{Model.City} - Clima en Tiempo Real";
+}
+
+<script>
+    // Aplicar el tema dinámico al body según la condición climática
+    document.body.className = 'weather-app-body @Model.ThemeClass';
+</script>
+
+<div class="container py-4">
+    <!-- Barra Superior: Buscador y Píldoras de Ciudades Populares -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-9">
+            <form asp-controller="Home" asp-action="Index" method="get" class="search-wrapper mb-3">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" 
+                       name="city" 
+                       class="form-control form-control-lg search-input" 
+                       placeholder="Buscar cualquier ciudad en el mundo (ej. Madrid, Tokio, Buenos Aires, Miami...)" 
+                       value="@Model.City"
+                       autocomplete="off" />
+                <button type="submit" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
+                    Consultar
+                </button>
+            </form>
+
+            <!-- Acceso rápido a ciudades -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-white-50 small me-1"><i class="bi bi-geo-alt-fill me-1"></i>Sugerencias:</span>
+                @foreach (var popularCity in Model.PopularCities)
+                {
+                    <a asp-action="Index" asp-route-city="@popularCity" 
+                       class="city-pill @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                        @popularCity
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal: Grid de 2 Columnas -->
+    <div class="row g-4">
+        <!-- Columna Izquierda: Tarjeta Hero y Pronóstico por Horas -->
+        <div class="col-lg-8">
+            <!-- Tarjeta Principal (Hero) -->
+            <div class="glass-card glass-hero mb-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h1 class="h2 fw-bold mb-0">@Model.City</h1>
+                            <span class="badge bg-white bg-opacity-25 rounded-pill px-3 py-1 text-white">@Model.Country</span>
+                        </div>
+                        <p class="text-white-50 mb-0 small">
+                            <i class="bi bi-compass me-1"></i>Lat: @Model.Latitude, Lon: @Model.Longitude
+                            <span class="mx-2">&bull;</span>
+                            <i class="bi bi-clock me-1"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
+                        </p>
+                    </div>
+                    <button class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archModal">
+                        <i class="bi bi-info-circle"></i>
+                        <span>Info Simulación</span>
+                    </button>
+                </div>
+
+                <div class="row align-items-center my-4">
+                    <div class="col-sm-7 d-flex align-items-center gap-4">
+                        <i class="bi @Model.Current.IconClass weather-hero-icon"></i>
+                        <div>
+                            <div class="d-flex align-items-start">
+                                <span class="temp-large" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
+                                    @Model.Current.TemperatureC
+                                </span>
+                                <span class="temp-unit">°C</span>
+                            </div>
+                            <div class="text-white-50 small mt-1">
+                                Sensación térmica: 
+                                <strong class="text-white" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
+                                    @Model.Current.FeelsLikeC°C
+                                </strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
+                        <h4 class="fw-semibold mb-2 text-capitalize">@Model.Current.ConditionDescription</h4>
+                        <div class="d-inline-flex flex-column gap-1 text-white-50 small text-sm-end">
+                            <div><i class="bi bi-sunrise text-warning me-1"></i> Amanecer: <strong class="text-white">@Model.Current.Sunrise</strong></div>
+                            <div><i class="bi bi-sunset text-warning me-1"></i> Atardecer: <strong class="text-white">@Model.Current.Sunset</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pronóstico Próximas 24 Horas -->
+                <div class="mt-4 pt-3 border-top border-white-10">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0 text-uppercase small text-white-50">
+                            <i class="bi bi-clock-history me-1 text-info"></i> Pronóstico de las Próximas 24 Horas
+                        </h6>
+                        <span class="small text-white-50">Desliza &rarr;</span>
+                    </div>
+
+                    <div class="hourly-scroll">
+                        @foreach (var hour in Model.Hourly)
+                        {
+                            <div class="hourly-card">
+                                <div class="small text-white-50 mb-1">@hour.Time</div>
+                                <i class="bi @hour.IconClass fs-3 my-2 d-block"></i>
+                                <div class="fw-bold mb-1" data-temp-c="@hour.TemperatureC" data-temp-f="@hour.TemperatureF">
+                                    @hour.TemperatureC°
+                                </div>
+                                @if (hour.PrecipitationProbability > 0)
+                                {
+                                    <div class="small text-info fw-semibold">
+                                        <i class="bi bi-droplet-fill small"></i>@hour.PrecipitationProbability%
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="small text-white-50">-</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla de Métricas Secundarias -->
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-info">
+                            <i class="bi bi-droplet-half"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Humedad</div>
+                            <div class="stat-value">@Model.Current.Humidity%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-primary">
+                            <i class="bi bi-wind"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Viento</div>
+                            <div class="stat-value">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal">km/h</span></div>
+                            <div class="small text-white-50">Dir: @Model.Current.WindDirection</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-warning">
+                            <i class="bi bi-brightness-high"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Índice UV</div>
+                            <div class="stat-value">@Model.Current.UvIndex <span class="fs-6 fw-normal">/ 11</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-danger">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Presión</div>
+                            <div class="stat-value">@Model.Current.PressureHpa <span class="fs-6 fw-normal">hPa</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-success">
+                            <i class="bi bi-eye"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Visibilidad</div>
+                            <div class="stat-value">@Model.Current.VisibilityKm <span class="fs-6 fw-normal">km</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-info">
+                            <i class="bi bi-thermometer-half"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">P. de Rocío</div>
+                            <div class="stat-value" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
+                                @Model.Current.DewPointC°C
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="glass-card stat-box">
+                        <div class="stat-icon text-success">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <div>
+                            <div class="stat-title">Calidad del Aire</div>
+                            <div class="stat-value fs-6">@Model.Current.AirQuality</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Pronóstico a 7 Días -->
+        <div class="col-lg-4">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-white-10">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-calendar-week me-2 text-warning"></i>Pronóstico de 7 Días
+                    </h5>
+                    <span class="badge bg-white bg-opacity-10 text-white-50">Semanal</span>
+                </div>
+
+                <div class="daily-list">
+                    @foreach (var day in Model.Daily)
+                    {
+                        <div class="daily-row d-flex align-items-center justify-content-between py-3">
+                            <div style="min-width: 90px;">
+                                <div class="fw-bold">@day.DayName</div>
+                                <div class="small text-white-50">@day.Date.ToString("dd MMM")</div>
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi @day.IconClass fs-4"></i>
+                                @if (day.PrecipitationProbability > 15)
+                                {
+                                    <span class="badge bg-primary bg-opacity-50 text-white small" style="font-size: 0.7rem;">
+                                        @day.PrecipitationProbability%
+                                    </span>
+                                }
+                            </div>
+
+                            <div class="text-end" style="min-width: 110px;">
+                                <div class="d-flex justify-content-end align-items-center gap-2">
+                                    <span class="small text-white-50" data-temp-c="@day.MinTempC" data-temp-f="@day.MinTempF">
+                                        @day.MinTempC°
+                                    </span>
+                                    <div class="temp-bar-bg flex-grow-1" style="width: 50px;">
+                                        <div class="temp-bar-fill" style="width: 75%;"></div>
+                                    </div>
+                                    <span class="fw-bold" data-temp-c="@day.MaxTempC" data-temp-f="@day.MaxTempF">
+                                        @day.MaxTempC°
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Informativo: Arquitectura de Simulación y Migración a API Real -->
+<div class="modal fade" id="archModal" tabindex="-1" aria-labelledby="archModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-card">
+            <div class="modal-header border-bottom border-white-10">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="archModalLabel">
+                    <i class="bi bi-diagram-3-fill text-info"></i> Arquitectura ClimaSpace
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <h6 class="fw-bold text-info mb-2"><i class="bi bi-check-circle-fill me-1"></i> Estado Actual: Simulación Procedural</h6>
+                <p class="text-white-75 small">
+                    Los datos meteorológicos actuales son generados por la clase <code>SimulatedWeatherService</code> implementando <code>IWeatherService</code>.
+                    Utiliza curvas matemáticas senoidales para el ciclo de temperatura día/noche, variaciones físicas coherentes (humedad, nubes, viento) y perfiles determinísticos para cualquier ciudad consultada.
+                </p>
+
+                <h6 class="fw-bold text-warning mt-4 mb-2"><i class="bi bi-arrow-repeat me-1"></i> ¿Cómo pasar a una API Real (OpenWeatherMap, MeteoBlue)?</h6>
+                <p class="text-white-75 small mb-2">
+                    Gracias a la inversión de dependencias (IoC), no tienes que modificar ninguna vista ni ningún controlador. Solo creas la implementación real:
+                </p>
+                <pre class="bg-dark bg-opacity-75 p-3 rounded text-info small mb-3"><code>public class OpenWeatherMapService : IWeatherService
+{
+    private readonly HttpClient _http;
+    public async Task&lt;WeatherReport&gt; GetWeatherReportAsync(string city)
+    {
+        // Llamada a https://api.openweathermap.org/data/2.5/forecast...
+    }
+}</code></pre>
+                <p class="text-white-75 small mb-0">
+                    Y en <code>Program.cs</code> reemplazas una sola línea:
+                    <br/>
+                    <code>builder.Services.AddScoped&lt;IWeatherService, OpenWeatherMapService&gt;();</code>
+                </p>
+            </div>
+            <div class="modal-footer border-top border-white-10">
+                <button type="button" class="btn btn-outline-light rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
