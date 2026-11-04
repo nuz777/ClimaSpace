@@ -67,11 +67,29 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         attributionControl: false
     });
 
-    // Capa Base: CartoDB Positron (Limpio, Blanco y Azul)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd'
+    // Capa Base: Esri Light Gray Canvas (100% libre, sin marcas de agua ni API key)
+    const esriLightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: '&copy; Esri, DeLorme, NAVTEQ'
     }).addTo(radarMap);
+
+    // Etiquetas y límites políticos nítidos
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        zIndex: 50
+    }).addTo(radarMap);
+
+    // Opción alternativa: OpenStreetMap estándar
+    const osmBase = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap'
+    });
+
+    // Control de capas para alternar mapas base fácilmente
+    L.control.layers({
+        "Mapa Radar Claro": esriLightBase,
+        "OpenStreetMap": osmBase
+    }, null, { position: 'topright' }).addTo(radarMap);
 
     // Marcador de ciudad con pulso azul
     const pinHtml = `<div class="radar-city-pin"></div>`;
