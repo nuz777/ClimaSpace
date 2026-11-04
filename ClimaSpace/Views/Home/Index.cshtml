@@ -66,10 +66,13 @@
                         <span class="stat-icon-circle" style="width: 38px; height: 38px; font-size: 1.2rem;">
                             <i class="bi bi-radar"></i>
                         </span>
-                        <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <h5 class="fw-bold mb-0 text-primary">Radar Doppler Meteorológico en Vivo</h5>
-                            <span class="text-muted small">Haz zoom libremente o haz clic en los <strong>puntos azulitos</strong> para cambiar de ciudad</span>
+                            <span id="radarActiveEchoBadge" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                <i class="bi bi-broadcast me-1"></i>Detectando ecos...
+                            </span>
                         </div>
+                        <span class="text-muted small">Haz zoom libremente, haz clic en los <strong>puntos azulitos</strong> o prueba los <strong>colores Doppler</strong></span>
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
@@ -99,17 +102,30 @@
                         </span>
                     </div>
 
-                    <!-- Leyenda Segmentada con Guía Completa de Colores Doppler -->
+                    <!-- Leyenda Segmentada con Guía Completa de Colores Doppler e Interactividad -->
                     <div class="radar-legend-group">
-                        <div class="radar-color-segments" role="button" data-bs-toggle="modal" data-bs-target="#dopplerGuideModal" title="Clic para ver la escala y significado de cada color">
-                            <span class="radar-color-pill c-green">Verde</span>
-                            <span class="radar-color-pill c-yellow">Amarillo</span>
-                            <span class="radar-color-pill c-orange">Naranja</span>
-                            <span class="radar-color-pill c-red">Rojo</span>
-                            <span class="radar-color-pill c-purple">Púrpura</span>
+                        <div class="radar-color-segments" title="Haz clic en cualquier color para probarlo en el radar o en 'Auto' para tiempo real">
+                            <span class="radar-color-pill c-green" onclick="setManualDopplerLevel('green')" title="Ver eco Verde: Llovizna y Lluvia Ligera (5-25 dBZ)">
+                                🟩 Verde
+                            </span>
+                            <span class="radar-color-pill c-yellow" onclick="setManualDopplerLevel('yellow')" title="Ver eco Amarillo: Lluvia Moderada (25-35 dBZ)">
+                                🟨 Amarillo
+                            </span>
+                            <span class="radar-color-pill c-orange" onclick="setManualDopplerLevel('orange')" title="Ver eco Naranja: Lluvia Fuerte (35-45 dBZ)">
+                                🟧 Naranja
+                            </span>
+                            <span class="radar-color-pill c-red" onclick="setManualDopplerLevel('red')" title="Ver eco Rojo: Tormenta (45-55 dBZ)">
+                                🟥 Rojo
+                            </span>
+                            <span class="radar-color-pill c-purple" onclick="setManualDopplerLevel('purple')" title="Ver eco Púrpura: Granizo (>55 dBZ)">
+                                🟪 Púrpura
+                            </span>
+                            <span class="radar-color-pill bg-primary" onclick="setManualDopplerLevel('auto')" title="Restablecer a Clima Real en Vivo">
+                                <i class="bi bi-arrow-repeat me-1"></i>Auto
+                            </span>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#dopplerGuideModal">
-                            <i class="bi bi-palette-fill me-1"></i>Guía de Colores
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#dopplerGuideModal" title="Ver explicación completa de cada color">
+                            <i class="bi bi-palette-fill me-1"></i>Guía
                         </button>
                     </div>
                 </div>
@@ -551,6 +567,7 @@
         lon: @Model.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
         name: "@Html.Raw(Model.City)",
         temp: @Model.Current.TemperatureC.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        desc: "@Html.Raw(Model.Current.ConditionDescription)"
+        desc: "@Html.Raw(Model.Current.ConditionDescription)",
+        precip: @Model.Current.PrecipitationMm.ToString(System.Globalization.CultureInfo.InvariantCulture)
     };
 </script>

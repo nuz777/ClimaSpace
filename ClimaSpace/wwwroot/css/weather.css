@@ -389,7 +389,7 @@ main {
 }
 
 .radar-color-pill {
-    padding: 0.22rem 0.65rem;
+    padding: 0.25rem 0.65rem;
     font-size: 0.73rem;
     font-weight: 700;
     color: #ffffff;
@@ -397,6 +397,19 @@ main {
     align-items: center;
     gap: 4px;
     user-select: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.radar-color-pill:hover {
+    transform: scale(1.05);
+    filter: brightness(1.12);
+}
+
+.radar-color-pill.active-level {
+    box-shadow: inset 0 0 0 2px #ffffff, 0 0 10px rgba(0,0,0,0.4);
+    transform: scale(1.08);
+    z-index: 2;
 }
 
 .radar-color-pill.c-green { background-color: #10b981; }

@@ -14,6 +14,8 @@ let radarAnimationTimer = null;
 let isRadarPlaying = false;
 let radarHost = 'https://tilecache.rainviewer.com';
 let rainEchoGroup = null;
+let regionalEchoGroup = null;
+let currentManualLevel = null;
 let radarCityMarkers = [];
 
 // Catálogo de localidades con "puntos azulitos" interactivos en el radar
@@ -116,11 +118,20 @@ async function selectCity(cityName) {
             });
         }
 
+        window.cityCoordinates = {
+            lat: data.latitude,
+            lon: data.longitude,
+            name: data.city,
+            temp: data.current.temperatureC,
+            desc: data.current.conditionDescription,
+            precip: data.current.precipitationMm
+        };
+
         // 2. Actualizar puntos azulitos y reflejar ciudad activa
         highlightActiveCityDot(data.city);
 
         // 3. Actualizar ecos Doppler de lluvia
-        renderPrecipitationEchoes(data.latitude, data.longitude, data.current.conditionDescription);
+        renderPrecipitationEchoes(data.latitude, data.longitude, data.current.conditionDescription, data.current.precipitationMm, data.city);
 
         // 4. Actualizar Tarjeta "El tiempo ahora en: [Ciudad]"
         updateSelectedCard(data);
@@ -347,7 +358,7 @@ function updateSuggestionPills(activeCity) {
 // --------------------------------------------------------------------------
 // 4. Inicialización del Radar Doppler Meteorológico
 // --------------------------------------------------------------------------
-function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
+function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precipMm) {
     const mapContainer = document.getElementById('weatherRadarMap');
     if (!mapContainer || typeof L === 'undefined') return;
 
@@ -387,13 +398,22 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         "Satélite Meteorológico HD": esriSatellite
     }, null, { position: 'topright' }).addTo(radarMap);
 
-    // 3. Agregar PUNTOS AZULITOS interactivos en el mapa
+    // 3. Crear pane dedicado para los ecos Doppler (por encima de mapas y RainViewer, zIndex 420)
+    if (!radarMap.getPane('dopplerEchoPane')) {
+        radarMap.createPane('dopplerEchoPane');
+        radarMap.getPane('dopplerEchoPane').style.zIndex = 420;
+    }
+
+    // 4. Agregar PUNTOS AZULITOS interactivos en el mapa
     addRadarCityDots(cityName);
 
-    // 4. Graficación visible de Ecos Doppler con todos los colores
-    renderPrecipitationEchoes(lat, lon, conditionDesc);
+    // 5. Graficación visible de Ecos Doppler con todos los colores
+    renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName);
 
-    // 5. Cargar datos de Radar RainViewer
+    // 6. Graficar frentes y ecos regionales en Colombia
+    renderRegionalColombiaEchoes();
+
+    // 7. Cargar datos de Radar RainViewer
     loadRainViewerRadarLayers();
 }
 
@@ -453,79 +473,282 @@ function highlightActiveCityDot(cityName) {
 }
 
 // --------------------------------------------------------------------------
-// 5. Visualización Gráfica Completa de Ecos Doppler (5 Niveles: Verde -> Púrpura)
+// 5. Visualización Gráfica Completa de Ecos Doppler (Verde -> Púrpura)
 // --------------------------------------------------------------------------
-function renderPrecipitationEchoes(lat, lon, conditionDesc) {
+function setManualDopplerLevel(level) {
+    currentManualLevel = (level === 'auto' || level === currentManualLevel) ? null : level;
+
+    // Actualizar clase activa en píldoras
+    document.querySelectorAll('.radar-color-pill').forEach(pill => {
+        pill.classList.remove('active-level');
+    });
+    if (currentManualLevel) {
+        const activePill = document.querySelector(`.radar-color-pill.c-${currentManualLevel}`);
+        if (activePill) activePill.classList.add('active-level');
+    }
+
+    if (window.cityCoordinates) {
+        renderPrecipitationEchoes(
+            window.cityCoordinates.lat,
+            window.cityCoordinates.lon,
+            window.cityCoordinates.desc,
+            window.cityCoordinates.precip,
+            window.cityCoordinates.name,
+            currentManualLevel
+        );
+    }
+}
+
+function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, forcedLevel) {
     if (!radarMap) return;
+
+    if (!radarMap.getPane('dopplerEchoPane')) {
+        radarMap.createPane('dopplerEchoPane');
+        radarMap.getPane('dopplerEchoPane').style.zIndex = 420;
+    }
 
     if (rainEchoGroup) {
         radarMap.removeLayer(rainEchoGroup);
     }
     rainEchoGroup = L.layerGroup().addTo(radarMap);
 
+    const badge = document.getElementById('radarActiveEchoBadge');
     const desc = (conditionDesc || "").toLowerCase();
-    const hasPrecipitation = desc.includes("lluv") || 
-                             desc.includes("chubasc") || 
-                             desc.includes("torment") || 
-                             desc.includes("drizzle") || 
-                             desc.includes("rain") ||
-                             desc.includes("shower") ||
-                             desc.includes("llovizn");
+    const precip = typeof precipMm === 'number' ? precipMm : 0;
+    const city = cityName || (window.cityCoordinates ? window.cityCoordinates.name : "esta zona");
 
-    if (hasPrecipitation) {
-        const isSevere = desc.includes("torment") || desc.includes("granizo") || desc.includes("intens");
-        const baseRadius = isSevere ? 36000 : 28000;
+    // Determinar nivel Doppler
+    let level = forcedLevel || currentManualLevel;
 
-        // 1. Capa Exterior: VERDE (#10b981) - Llovizna y Lluvia Ligera (5 - 25 dBZ)
-        const greenEcho = L.circle([lat, lon], {
-            radius: baseRadius,
+    if (!level) {
+        const isSevereHail = desc.includes("granizo") || desc.includes("sever") || precip >= 30;
+        const isTorrential = desc.includes("torment") || desc.includes("torrencial") || (precip >= 15 && precip < 30);
+        const isHeavy = desc.includes("fuerte") || desc.includes("intens") || desc.includes("chubasc") || (precip >= 7.5 && precip < 15);
+        const isModerate = desc.includes("moderad") || (precip >= 2.5 && precip < 7.5);
+        const isDrizzle = desc.includes("llovizn") || desc.includes("drizzle") || desc.includes("ligera") || desc.includes("lluv") || (precip > 0 && precip < 2.5);
+
+        if (isSevereHail) level = 'purple';
+        else if (isTorrential) level = 'red';
+        else if (isHeavy) level = 'orange';
+        else if (isModerate) level = 'yellow';
+        else if (isDrizzle) level = 'green';
+    }
+
+    // 1. NIVEL VERDE: Llovizna y Lluvia Ligera (5 - 25 dBZ) -> 100% VERDE
+    if (level === 'green') {
+        if (badge) {
+            badge.className = "badge bg-success text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
+            badge.innerHTML = `<i class="bi bi-cloud-drizzle-fill me-1"></i>🟩 Eco Verde: Llovizna activa en ${city} (5 - 25 dBZ)`;
+        }
+
+        // Celda Principal de Llovizna Verde (44 km de radio - claramente visible)
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 44000,
             color: '#059669',
             fillColor: '#10b981',
-            fillOpacity: 0.38,
+            fillOpacity: 0.55,
+            weight: 2.5
+        }).bindTooltip(`🟩 <strong>Eco Doppler Verde (18 dBZ):</strong> Llovizna activa en ${city} (&lt; 2.5 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+
+        // Celda Periférica 1 (Norte / Costa)
+        L.circle([lat + 0.12, lon - 0.14], {
+            pane: 'dopplerEchoPane',
+            radius: 34000,
+            color: '#16a34a',
+            fillColor: '#22c55e',
+            fillOpacity: 0.48,
+            weight: 2
+        }).bindTooltip(`🟩 <strong>Frente de Llovizna:</strong> Nubosidad lluviosa costera (15 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
+
+        // Celda Periférica 2 (Sur / Interior)
+        L.circle([lat - 0.10, lon + 0.12], {
+            pane: 'dopplerEchoPane',
+            radius: 28000,
+            color: '#059669',
+            fillColor: '#34d399',
+            fillOpacity: 0.45,
+            weight: 2
+        }).bindTooltip(`🟩 <strong>Lloviznas Dispersas:</strong> Gotas finas (12 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
+
+        // Núcleo de Drizzle Continuo
+        L.circle([lat + 0.03, lon + 0.02], {
+            pane: 'dopplerEchoPane',
+            radius: 20000,
+            color: '#047857',
+            fillColor: '#10b981',
+            fillOpacity: 0.68,
+            weight: 2.5
+        }).bindTooltip(`🟩 <strong>Llovizna Continua:</strong> 1.5 - 2.5 mm/h`, { direction: 'top' }).addTo(rainEchoGroup);
+    }
+    // 2. NIVEL AMARILLO: Lluvia Moderada (25 - 35 dBZ) -> Verde exterior + Amarillo central
+    else if (level === 'yellow') {
+        if (badge) {
+            badge.className = "badge bg-warning text-dark rounded-pill px-3 py-1 small fw-bold shadow-sm";
+            badge.innerHTML = `<i class="bi bi-cloud-rain-fill me-1"></i>🟨 Eco Amarillo: Lluvia Moderada en ${city} (25 - 35 dBZ)`;
+        }
+
+        // Anillo exterior Verde
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 46000,
+            color: '#059669',
+            fillColor: '#10b981',
+            fillOpacity: 0.45,
+            weight: 2
+        }).bindTooltip(`🟩 <strong>Eco Verde:</strong> Llovizna periférica (15 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
+
+        L.circle([lat + 0.10, lon - 0.12], {
+            pane: 'dopplerEchoPane',
+            radius: 32000,
+            color: '#16a34a',
+            fillColor: '#22c55e',
+            fillOpacity: 0.48,
             weight: 2
         }).addTo(rainEchoGroup);
-        greenEcho.bindTooltip("🟩 <strong>Eco Verde:</strong> Llovizna / Lluvia ligera (5 - 25 dBZ)", { direction: 'top' });
 
-        // 2. Capa Media: AMARILLO (#eab308) - Lluvia Moderada (25 - 35 dBZ)
-        const yellowEcho = L.circle([lat, lon], {
-            radius: Math.round(baseRadius * 0.65),
+        // Núcleo central Amarillo
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 22000,
             color: '#ca8a04',
             fillColor: '#eab308',
-            fillOpacity: 0.50,
+            fillOpacity: 0.65,
+            weight: 2.5
+        }).bindTooltip(`🟨 <strong>Eco Doppler Amarillo (30 dBZ):</strong> Lluvia moderada (2.5 - 7.5 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+    }
+    // 3. NIVEL NARANJA: Lluvia Fuerte (35 - 45 dBZ) -> Verde -> Amarillo -> Naranja
+    else if (level === 'orange') {
+        if (badge) {
+            badge.className = "badge bg-danger text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
+            badge.innerHTML = `<i class="bi bi-cloud-rain-heavy-fill me-1"></i>🟧 Eco Naranja: Lluvia Fuerte en ${city} (35 - 45 dBZ)`;
+        }
+
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 48000,
+            color: '#059669',
+            fillColor: '#10b981',
+            fillOpacity: 0.42,
             weight: 2
         }).addTo(rainEchoGroup);
-        yellowEcho.bindTooltip("🟨 <strong>Eco Amarillo:</strong> Lluvia moderada (25 - 35 dBZ)", { direction: 'top' });
 
-        // 3. Capa Interior: NARANJA (#f97316) - Lluvia Fuerte (35 - 45 dBZ)
-        const orangeEcho = L.circle([lat, lon], {
-            radius: Math.round(baseRadius * 0.42),
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 30000,
+            color: '#ca8a04',
+            fillColor: '#eab308',
+            fillOpacity: 0.55,
+            weight: 2
+        }).addTo(rainEchoGroup);
+
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 16000,
             color: '#ea580c',
             fillColor: '#f97316',
-            fillOpacity: 0.62,
-            weight: 2
-        }).addTo(rainEchoGroup);
-        orangeEcho.bindTooltip("🟧 <strong>Eco Naranja:</strong> Lluvia fuerte (35 - 45 dBZ)", { direction: 'top' });
+            fillOpacity: 0.72,
+            weight: 2.5
+        }).bindTooltip(`🟧 <strong>Eco Doppler Naranja (40 dBZ):</strong> Lluvia fuerte (7.5 - 15 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+    }
+    // 4. NIVEL ROJO: Tormenta / Lluvia Torrencial (45 - 55 dBZ)
+    else if (level === 'red') {
+        if (badge) {
+            badge.className = "badge bg-danger text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
+            badge.innerHTML = `<i class="bi bi-cloud-lightning-rain-fill me-1"></i>🟥 Eco Rojo: Tormenta / Lluvia Torrencial (45 - 55 dBZ)`;
+        }
 
-        // 4. Capa Intensa: ROJO (#ef4444) - Lluvia Torrencial / Tormenta (45 - 55 dBZ)
-        const redEcho = L.circle([lat, lon], {
-            radius: Math.round(baseRadius * 0.22),
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 50000, color: '#059669', fillColor: '#10b981', fillOpacity: 0.40, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 34000, color: '#ca8a04', fillColor: '#eab308', fillOpacity: 0.50, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 20000, color: '#ea580c', fillColor: '#f97316', fillOpacity: 0.65, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 9500,
             color: '#dc2626',
             fillColor: '#ef4444',
-            fillOpacity: 0.75,
-            weight: 2
-        }).addTo(rainEchoGroup);
-        redEcho.bindTooltip("🟥 <strong>Eco Rojo:</strong> Lluvia torrencial / Tormenta (45 - 55 dBZ)", { direction: 'top' });
+            fillOpacity: 0.82,
+            weight: 2.5
+        }).bindTooltip(`🟥 <strong>Eco Doppler Rojo (50 dBZ):</strong> Tormenta y Lluvia Torrencial (15 - 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+    }
+    // 5. NIVEL PÚRPURA: Tormenta Severa con Granizo (> 55 dBZ)
+    else if (level === 'purple') {
+        if (badge) {
+            badge.className = "badge text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
+            badge.style.backgroundColor = '#7c3aed';
+            badge.innerHTML = `<i class="bi bi-lightning-charge-fill me-1"></i>🟪 Eco Púrpura: Tormenta Severa / Granizo (> 55 dBZ)`;
+        }
 
-        // 5. Núcleo Convectivo: PÚRPURA (#8b5cf6) - Tormenta Severa / Granizo (> 55 dBZ)
-        const purpleEcho = L.circle([lat, lon], {
-            radius: Math.round(baseRadius * 0.10),
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 52000, color: '#059669', fillColor: '#10b981', fillOpacity: 0.40, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 36000, color: '#ca8a04', fillColor: '#eab308', fillOpacity: 0.50, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 22000, color: '#ea580c', fillColor: '#f97316', fillOpacity: 0.62, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 11000, color: '#dc2626', fillColor: '#ef4444', fillOpacity: 0.75, weight: 2 }).addTo(rainEchoGroup);
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: 4500,
             color: '#7c3aed',
             fillColor: '#8b5cf6',
-            fillOpacity: 0.88,
-            weight: 2
-        }).addTo(rainEchoGroup);
-        purpleEcho.bindTooltip("🟪 <strong>Eco Púrpura:</strong> Tormenta severa / Granizo (&gt; 55 dBZ)", { direction: 'top' });
+            fillOpacity: 0.92,
+            weight: 3
+        }).bindTooltip(`🟪 <strong>Eco Doppler Púrpura (60 dBZ):</strong> Núcleo de Granizo / Turbonada (> 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
+    // SIN PRECIPITACIÓN LOCAL
+    else {
+        if (badge) {
+            badge.className = "badge bg-light text-secondary border rounded-pill px-3 py-1 small";
+            badge.innerHTML = `<i class="bi bi-cloud-sun me-1"></i>Sin lluvia local en ${city} — Ecos regionales activos`;
+        }
+    }
+}
+
+// --------------------------------------------------------------------------
+// Graficación Permanente de Ecos Regionales en Colombia (Chocó, Caribe, etc.)
+// --------------------------------------------------------------------------
+function renderRegionalColombiaEchoes() {
+    if (!radarMap) return;
+
+    if (!regionalEchoGroup) {
+        regionalEchoGroup = L.layerGroup().addTo(radarMap);
+    }
+    regionalEchoGroup.clearLayers();
+
+    // 1. Frente de Llovizna y Lluvias en la Costa Pacífica (Chocó - zona de alta reflectividad tropical)
+    L.circle([5.69, -76.65], {
+        pane: 'dopplerEchoPane',
+        radius: 65000,
+        color: '#059669',
+        fillColor: '#10b981',
+        fillOpacity: 0.45,
+        weight: 2
+    }).bindTooltip("🟩 <strong>Frente Doppler Verde:</strong> Lloviznas en la Cuenca Pacífica (18 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    L.circle([5.85, -76.80], {
+        pane: 'dopplerEchoPane',
+        radius: 38000,
+        color: '#ca8a04',
+        fillColor: '#eab308',
+        fillOpacity: 0.50,
+        weight: 1.5
+    }).bindTooltip("🟨 <strong>Frente Doppler Amarillo:</strong> Lluvia moderada (28 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    // 2. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
+    L.circle([10.75, -73.65], {
+        pane: 'dopplerEchoPane',
+        radius: 38000,
+        color: '#059669',
+        fillColor: '#10b981',
+        fillOpacity: 0.42,
+        weight: 2
+    }).bindTooltip("🟩 <strong>Eco Doppler Verde:</strong> Lloviznas orográficas en la Sierra Nevada (15 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    // 3. Sistema de Llovizna Verde en el Piedemonte Amazónico
+    L.circle([1.61, -75.61], {
+        pane: 'dopplerEchoPane',
+        radius: 52000,
+        color: '#059669',
+        fillColor: '#10b981',
+        fillOpacity: 0.40,
+        weight: 2
+    }).bindTooltip("🟩 <strong>Eco Doppler Verde:</strong> Nubosidad con llovizna en la Amazonía (14 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
 }
 
 // --------------------------------------------------------------------------
@@ -690,7 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.cityCoordinates.lon,
             window.cityCoordinates.name,
             window.cityCoordinates.temp,
-            window.cityCoordinates.desc
+            window.cityCoordinates.desc,
+            window.cityCoordinates.precip
         );
     }
 

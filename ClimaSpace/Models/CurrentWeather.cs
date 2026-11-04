@@ -19,6 +19,7 @@ public class CurrentWeather
 
     public WeatherCondition Condition { get; set; }
     public string ConditionDescription { get; set; } = string.Empty;
+    public double PrecipitationMm { get; set; }
     public string IconClass { get; set; } = "bi-sun-fill";
     public bool IsDay { get; set; } = true;
 

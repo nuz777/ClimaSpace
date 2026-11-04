@@ -97,6 +97,7 @@ public class OpenMeteoWeatherService : IWeatherService
             double feelsLike = currentElem.GetProperty("apparent_temperature").GetDouble();
             bool isDay = currentElem.GetProperty("is_day").GetInt32() == 1;
             int weatherCode = currentElem.GetProperty("weather_code").GetInt32();
+            double precipMm = currentElem.TryGetProperty("precipitation", out var pVal) && pVal.ValueKind == JsonValueKind.Number ? pVal.GetDouble() : 0.0;
             double pressure = currentElem.GetProperty("surface_pressure").GetDouble();
             double windSpeed = currentElem.GetProperty("wind_speed_10m").GetDouble();
             int windDirDegrees = currentElem.GetProperty("wind_direction_10m").GetInt32();
@@ -245,6 +246,7 @@ public class OpenMeteoWeatherService : IWeatherService
                     AirQuality = uvIndex > 6 ? "Moderada (AQI 52)" : "Excelente (AQI 22)",
                     Condition = condition,
                     ConditionDescription = conditionDesc,
+                    PrecipitationMm = Math.Round(precipMm, 2),
                     IconClass = iconClass,
                     IsDay = isDay,
                     Sunrise = sunriseStr,

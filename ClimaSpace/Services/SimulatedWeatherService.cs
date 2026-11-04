@@ -107,6 +107,13 @@ public class SimulatedWeatherService : IWeatherService
             AirQuality = uvIndex > 7 ? "Moderada (AQI 58)" : "Excelente (AQI 24)",
             Condition = currentCondition,
             ConditionDescription = conditionDesc,
+            PrecipitationMm = currentCondition switch
+            {
+                WeatherCondition.LightRain => 1.2,
+                WeatherCondition.HeavyRain => 9.5,
+                WeatherCondition.Thunderstorm => 24.0,
+                _ => 0.0
+            },
             IconClass = iconClass,
             IsDay = isDay,
             Sunrise = "06:05",
