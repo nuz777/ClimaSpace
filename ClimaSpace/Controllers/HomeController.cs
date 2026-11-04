@@ -50,6 +50,35 @@ public class HomeController : Controller
     }
 
     [HttpGet]
+    public async Task<IActionResult> GetWeatherData(string? city = "Bogotá, Colombia", string? provider = "live")
+    {
+        city = string.IsNullOrWhiteSpace(city) ? "Bogotá, Colombia" : city.Trim();
+        provider = string.Equals(provider, "simulated", StringComparison.OrdinalIgnoreCase) ? "simulated" : "live";
+
+        try
+        {
+            WeatherReport weatherReport;
+            if (provider == "simulated")
+            {
+                weatherReport = await _simulatedService.GetWeatherReportAsync(city);
+                weatherReport.Provider = "simulated";
+            }
+            else
+            {
+                weatherReport = await _openMeteoService.GetWeatherReportAsync(city);
+                weatherReport.Provider = "live";
+            }
+
+            return Json(weatherReport);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en GetWeatherData para la ciudad: {City}", city);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet]
     public async Task<IActionResult> QuickSearch(string query)
     {
         var cities = await _simulatedService.GetPopularCitiesAsync();

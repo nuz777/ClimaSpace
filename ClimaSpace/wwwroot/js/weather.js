@@ -1,8 +1,11 @@
 // ==========================================================================
-// ClimaSpace - Controlador del Radar Doppler & Interfaz de Usuario
+// ClimaSpace - Controlador del Radar Doppler & Interfaz Dinámica SPA
 // ==========================================================================
 
 let currentUnit = 'C';
+let currentProvider = window.currentProvider || 'live';
+let currentCityName = (window.cityCoordinates && window.cityCoordinates.name) || 'Bogotá';
+
 let radarMap = null;
 let radarTileLayer = null;
 let radarFrames = [];
@@ -11,6 +14,7 @@ let radarAnimationTimer = null;
 let isRadarPlaying = false;
 let radarHost = 'https://tilecache.rainviewer.com';
 let rainEchoGroup = null;
+let radarCityMarkers = [];
 
 // Catálogo de localidades con "puntos azulitos" interactivos en el radar
 const RADAR_CITIES = [
@@ -69,8 +73,279 @@ function setTemperatureUnit(unit) {
     } catch (e) {}
 }
 
+function formatTempDisplay(cVal, fVal, withUnit = true) {
+    const val = currentUnit === 'C' ? cVal : fVal;
+    const unit = withUnit ? `°${currentUnit}` : '';
+    return `${val}${unit}`;
+}
+
 // --------------------------------------------------------------------------
-// 2. Inicialización del Radar Doppler Meteorológico
+// 2. Transición Dinámica de Ciudad (SIN RECARGAR LA PÁGINA)
+// --------------------------------------------------------------------------
+async function selectCity(cityName) {
+    if (!cityName) return;
+    cityName = cityName.trim();
+
+    const spinner = document.getElementById('searchBtnSpinner');
+    const btnText = document.getElementById('searchBtnText');
+    const searchInput = document.getElementById('citySearchInput');
+
+    if (spinner) spinner.classList.remove('d-none');
+    if (btnText) btnText.textContent = 'Cargando...';
+
+    try {
+        const response = await fetch(`/Home/GetWeatherData?city=${encodeURIComponent(cityName)}&provider=${encodeURIComponent(currentProvider)}`);
+        if (!response.ok) throw new Error("Error al consultar datos");
+
+        const data = await response.json();
+        currentCityName = data.city;
+
+        // Actualizar URL en el navegador sin recargar la página
+        const newUrl = `/?city=${encodeURIComponent(data.city)}&provider=${encodeURIComponent(currentProvider)}`;
+        window.history.pushState({ city: data.city, provider: currentProvider }, '', newUrl);
+        document.title = `${data.city} - Radar y Clima - ClimaSpace`;
+
+        // Actualizar input de búsqueda
+        if (searchInput) searchInput.value = data.city;
+
+        // 1. Actualizar el mapa y la posición
+        if (radarMap) {
+            radarMap.flyTo([data.latitude, data.longitude], Math.max(radarMap.getZoom(), 7), {
+                duration: 1.2,
+                easeLinearity: 0.25
+            });
+        }
+
+        // 2. Actualizar puntos azulitos y reflejar ciudad activa
+        highlightActiveCityDot(data.city);
+
+        // 3. Actualizar ecos Doppler de lluvia
+        renderPrecipitationEchoes(data.latitude, data.longitude, data.current.conditionDescription);
+
+        // 4. Actualizar Tarjeta "El tiempo ahora en: [Ciudad]"
+        updateSelectedCard(data);
+
+        // 5. Actualizar Tarjeta Hero y Pronóstico de 24h
+        updateHeroCard(data);
+
+        // 6. Actualizar Pronóstico de 7 días
+        updateDailyForecast(data.daily);
+
+        // 7. Actualizar Grilla de 8 Métricas Secundarias
+        updateSecondaryMetrics(data.current);
+
+        // 8. Actualizar píldoras de sugerencias
+        updateSuggestionPills(data.city);
+
+    } catch (err) {
+        console.error("Error al actualizar ciudad:", err);
+    } finally {
+        if (spinner) spinner.classList.add('d-none');
+        if (btnText) btnText.textContent = 'Buscar';
+    }
+}
+
+function handleSearchSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('citySearchInput');
+    if (input && input.value) {
+        selectCity(input.value);
+    }
+}
+
+function switchProvider(provider) {
+    if (currentProvider === provider) return;
+    currentProvider = provider;
+
+    const btnLive = document.getElementById('providerLiveBtn');
+    const btnSim = document.getElementById('providerSimBtn');
+
+    if (btnLive && btnSim) {
+        if (provider === 'live') {
+            btnLive.classList.add('active');
+            btnSim.classList.remove('active');
+        } else {
+            btnSim.classList.add('active');
+            btnLive.classList.remove('active');
+        }
+    }
+
+    // Refrescar la ciudad actual con el nuevo proveedor sin recargar la página
+    selectCity(currentCityName);
+}
+
+// --------------------------------------------------------------------------
+// 3. Actualizadores DOM para SPA
+// --------------------------------------------------------------------------
+function updateSelectedCard(data) {
+    const elCity = document.getElementById('selectedCardCity');
+    const elCountry = document.getElementById('selectedCardCountry');
+    const elTime = document.getElementById('selectedCardTime');
+    const elTemp = document.getElementById('selectedCardTemp');
+    const elDesc = document.getElementById('selectedCardDesc');
+    const elIcon = document.getElementById('selectedCardIcon');
+    const elFeels = document.getElementById('selectedCardFeelsLike');
+    const elHum = document.getElementById('selectedCardHumidity');
+    const elWind = document.getElementById('selectedCardWind');
+    const elBadge = document.getElementById('selectedCardProviderBadge');
+
+    if (elCity) elCity.textContent = data.city;
+    if (elCountry) {
+        elCountry.textContent = data.country.toLowerCase().includes('colombia') ? '🇨🇴 Colombia' : data.country;
+    }
+    if (elTime) {
+        const dateObj = new Date(data.localTime);
+        const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        elTime.textContent = `${timeStr}`;
+    }
+    if (elTemp) {
+        elTemp.setAttribute('data-temp-c', data.current.temperatureC);
+        elTemp.setAttribute('data-temp-f', data.current.temperatureF);
+        elTemp.textContent = formatTempDisplay(data.current.temperatureC, data.current.temperatureF, false);
+    }
+    if (elDesc) elDesc.textContent = data.current.conditionDescription;
+    if (elIcon) elIcon.className = `bi ${data.current.iconClass} fs-1 text-warning`;
+    if (elFeels) {
+        elFeels.setAttribute('data-temp-c', data.current.feelsLikeC);
+        elFeels.setAttribute('data-temp-f', data.current.feelsLikeF);
+        elFeels.textContent = formatTempDisplay(data.current.feelsLikeC, data.current.feelsLikeF, true);
+    }
+    if (elHum) elHum.textContent = `${data.current.humidity}%`;
+    if (elWind) elWind.textContent = `${data.current.windSpeedKmh} km/h`;
+    if (elBadge) {
+        elBadge.className = data.isLiveApi ? 'badge bg-success rounded-pill px-2 py-1 small' : 'badge bg-warning text-dark rounded-pill px-2 py-1 small';
+        elBadge.textContent = data.isLiveApi ? 'En Vivo' : 'Simulado';
+    }
+}
+
+function updateHeroCard(data) {
+    const elCity = document.getElementById('heroCityName');
+    const elCountry = document.getElementById('heroCountryBadge');
+    const elCoords = document.getElementById('heroCoords');
+    const elTemp = document.getElementById('heroTemp');
+    const elFeels = document.getElementById('heroFeelsLike');
+    const elDesc = document.getElementById('heroDesc');
+    const elIcon = document.getElementById('heroIcon');
+    const elSunrise = document.getElementById('heroSunrise');
+    const elSunset = document.getElementById('heroSunset');
+    const elStatus = document.getElementById('heroStatusText');
+
+    if (elCity) elCity.textContent = data.city;
+    if (elCountry) elCountry.textContent = data.country;
+    if (elCoords) elCoords.textContent = `Lat: ${data.latitude}, Lon: ${data.longitude}`;
+    if (elStatus) elStatus.textContent = `Actualizado para ${data.city}`;
+    if (elTemp) {
+        elTemp.setAttribute('data-temp-c', data.current.temperatureC);
+        elTemp.setAttribute('data-temp-f', data.current.temperatureF);
+        elTemp.textContent = formatTempDisplay(data.current.temperatureC, data.current.temperatureF, false);
+    }
+    if (elFeels) {
+        elFeels.setAttribute('data-temp-c', data.current.feelsLikeC);
+        elFeels.setAttribute('data-temp-f', data.current.feelsLikeF);
+        elFeels.textContent = formatTempDisplay(data.current.feelsLikeC, data.current.feelsLikeF, true);
+    }
+    if (elDesc) elDesc.textContent = data.current.conditionDescription;
+    if (elIcon) elIcon.className = `bi ${data.current.iconClass} weather-hero-icon text-warning`;
+    if (elSunrise) elSunrise.textContent = data.current.sunrise;
+    if (elSunset) elSunset.textContent = data.current.sunset;
+
+    // Actualizar cinta horizontal de 24 horas
+    const hourlyContainer = document.getElementById('hourlyForecastContainer');
+    if (hourlyContainer && data.hourly) {
+        hourlyContainer.innerHTML = data.hourly.map(h => `
+            <div class="hourly-card-white">
+                <div class="small text-white-50 mb-1">${h.time}</div>
+                <i class="bi ${h.iconClass} fs-3 my-2 d-block"></i>
+                <div class="fw-bold mb-1" data-temp-c="${h.temperatureC}" data-temp-f="${h.temperatureF}">
+                    ${formatTempDisplay(h.temperatureC, h.temperatureF, true)}
+                </div>
+                ${h.precipitationProbability > 0 ? 
+                    `<div class="small text-info fw-semibold"><i class="bi bi-droplet-fill small"></i>${h.precipitationProbability}%</div>` :
+                    `<div class="small text-white-50">-</div>`}
+            </div>
+        `).join('');
+    }
+}
+
+function updateDailyForecast(daily) {
+    const dailyContainer = document.getElementById('dailyForecastContainer');
+    if (!dailyContainer || !daily) return;
+
+    dailyContainer.innerHTML = daily.map(d => {
+        const dateObj = new Date(d.date);
+        const dateStr = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+
+        return `
+            <div class="daily-row-white d-flex align-items-center justify-content-between py-3">
+                <div style="min-width: 90px;">
+                    <div class="fw-bold text-dark">${d.dayName}</div>
+                    <div class="small text-muted">${dateStr}</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi ${d.iconClass} fs-4"></i>
+                    ${d.precipitationProbability > 15 ? 
+                        `<span class="badge bg-primary-subtle text-primary border border-primary-subtle small" style="font-size: 0.72rem;">${d.precipitationProbability}%</span>` : 
+                        ''}
+                </div>
+                <div class="text-end" style="min-width: 110px;">
+                    <div class="d-flex justify-content-end align-items-center gap-2">
+                        <span class="small text-muted" data-temp-c="${d.minTempC}" data-temp-f="${d.minTempF}">
+                            ${formatTempDisplay(d.minTempC, d.minTempF, true)}
+                        </span>
+                        <div class="temp-bar-bg-blue flex-grow-1" style="width: 50px;">
+                            <div class="temp-bar-fill-blue" style="width: 75%;"></div>
+                        </div>
+                        <span class="fw-bold text-dark" data-temp-c="${d.maxTempC}" data-temp-f="${d.maxTempF}">
+                            ${formatTempDisplay(d.maxTempC, d.maxTempF, true)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateSecondaryMetrics(current) {
+    const elHum = document.getElementById('metricHumidity');
+    const elWind = document.getElementById('metricWind');
+    const elWindDir = document.getElementById('metricWindDir');
+    const elUv = document.getElementById('metricUv');
+    const elPress = document.getElementById('metricPressure');
+    const elVis = document.getElementById('metricVisibility');
+    const elDew = document.getElementById('metricDewPoint');
+    const elAir = document.getElementById('metricAirQuality');
+
+    if (elHum) elHum.textContent = `${current.humidity}%`;
+    if (elWind) elWind.textContent = current.windSpeedKmh;
+    if (elWindDir) elWindDir.textContent = current.windDirection;
+    if (elUv) elUv.textContent = current.uvIndex;
+    if (elPress) elPress.textContent = current.pressureHpa;
+    if (elVis) elVis.textContent = current.visibilityKm;
+    if (elDew) {
+        const dewF = Math.round(current.dewPointC * 9.0 / 5.0 + 32.0, 1);
+        elDew.setAttribute('data-temp-c', current.dewPointC);
+        elDew.setAttribute('data-temp-f', dewF);
+        elDew.textContent = formatTempDisplay(current.dewPointC, dewF, true);
+    }
+    if (elAir) elAir.textContent = current.airQuality;
+}
+
+function updateSuggestionPills(activeCity) {
+    const pills = document.querySelectorAll('#popularCitiesContainer .city-pill-white');
+    pills.forEach(pill => {
+        const cityName = pill.getAttribute('data-city') || pill.textContent.trim();
+        const isActive = cityName.toLowerCase() === activeCity.toLowerCase() || 
+                         (cityName === 'Bogotá' && activeCity.includes('Bogot'));
+        if (isActive) {
+            pill.classList.add('active');
+        } else {
+            pill.classList.remove('active');
+        }
+    });
+}
+
+// --------------------------------------------------------------------------
+// 4. Inicialización del Radar Doppler Meteorológico
 // --------------------------------------------------------------------------
 function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
     const mapContainer = document.getElementById('weatherRadarMap');
@@ -81,7 +356,7 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         radarMap = null;
     }
 
-    // Configuración robusta de Leaflet para soportar zoom in y zoom out sin romper capas
+    // Configuración robusta de Leaflet
     radarMap = L.map('weatherRadarMap', {
         center: [lat, lon],
         zoom: 7,
@@ -119,7 +394,7 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
         "OpenStreetMap": osmBase
     }, null, { position: 'topright' }).addTo(radarMap);
 
-    // 4. Agregar PUNTOS AZULITOS de selección en el mapa
+    // 4. Agregar PUNTOS AZULITOS interactivos en el mapa
     addRadarCityDots(cityName);
 
     // 5. Graficación visible de Ecos de Lluvia y Chubascos
@@ -129,13 +404,9 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc) {
     loadRainViewerRadarLayers();
 }
 
-// --------------------------------------------------------------------------
-// 3. Puntos Azulitos Interactivos para Seleccionar Ciudad en el Radar
-// --------------------------------------------------------------------------
 function addRadarCityDots(activeCityName) {
     if (!radarMap) return;
-
-    const currentProvider = window.currentProvider || 'live';
+    radarCityMarkers = [];
 
     RADAR_CITIES.forEach(city => {
         const isActive = activeCityName && (
@@ -144,7 +415,7 @@ function addRadarCityDots(activeCityName) {
         );
 
         const dotClass = isActive ? "radar-city-dot active-city" : "radar-city-dot";
-        const dotHtml = `<div class="${dotClass}" title="${city.name}"></div>`;
+        const dotHtml = `<div class="${dotClass}" id="dot-${city.name.replace(/\s+/g, '')}" title="${city.name}"></div>`;
 
         const dotIcon = L.divIcon({
             className: 'radar-dot-wrapper',
@@ -161,15 +432,35 @@ function addRadarCityDots(activeCityName) {
             className: 'shadow-sm border rounded-pill px-2 py-1 small'
         });
 
+        // Al hacer clic: ACTUALIZA TODO VÍA AJAX SIN RECARGAR LA PÁGINA
         marker.on('click', () => {
-            // Navegar directamente a la ciudad seleccionada
-            window.location.href = `/?city=${encodeURIComponent(city.name)}&provider=${currentProvider}`;
+            selectCity(city.name);
         });
+
+        radarCityMarkers.push({ name: city.name, marker: marker });
+    });
+}
+
+function highlightActiveCityDot(cityName) {
+    RADAR_CITIES.forEach(city => {
+        const dotEl = document.getElementById(`dot-${city.name.replace(/\s+/g, '')}`);
+        if (!dotEl) return;
+
+        const isActive = cityName && (
+            city.name.toLowerCase() === cityName.toLowerCase() ||
+            cityName.toLowerCase().includes(city.name.toLowerCase())
+        );
+
+        if (isActive) {
+            dotEl.className = "radar-city-dot active-city";
+        } else {
+            dotEl.className = "radar-city-dot";
+        }
     });
 }
 
 // --------------------------------------------------------------------------
-// 4. Visualización Gráfica de Ecos de Lluvia, Chubascos y Tormentas
+// 5. Visualización Gráfica de Ecos de Lluvia, Chubascos y Tormentas
 // --------------------------------------------------------------------------
 function renderPrecipitationEchoes(lat, lon, conditionDesc) {
     if (!radarMap) return;
@@ -190,7 +481,6 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc) {
     if (hasPrecipitation) {
         const isHeavy = desc.includes("intens") || desc.includes("torment") || desc.includes("heavy");
 
-        // Círculo Doppler Exterior (Verde: Llovizna / Precipitación ligera)
         L.circle([lat, lon], {
             radius: isHeavy ? 28000 : 18000,
             color: '#10b981',
@@ -200,7 +490,6 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc) {
             className: 'radar-rain-echo-pulse'
         }).addTo(rainEchoGroup);
 
-        // Círculo Doppler Medio (Amarillo: Moderada)
         L.circle([lat, lon], {
             radius: isHeavy ? 18000 : 10000,
             color: '#eab308',
@@ -209,7 +498,6 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc) {
             weight: 1.5
         }).addTo(rainEchoGroup);
 
-        // Núcleo Doppler (Naranja / Rojo: Fuerte)
         L.circle([lat, lon], {
             radius: isHeavy ? 9000 : 4500,
             color: '#ef4444',
@@ -217,24 +505,11 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc) {
             fillOpacity: 0.6,
             weight: 2
         }).addTo(rainEchoGroup);
-
-        // Etiqueta flotante Doppler
-        const echoPopup = L.popup({ autoClose: false, closeOnClick: false, offset: [0, -10] })
-            .setLatLng([lat, lon])
-            .setContent(`
-                <div class="text-center" style="font-size: 0.8rem; line-height: 1.3;">
-                    <strong class="text-danger"><i class="bi bi-cloud-rain-heavy-fill me-1"></i>Eco de Precipitación Activo</strong><br/>
-                    <span class="text-secondary small">Intensidad Doppler: Moderada a Alta</span>
-                </div>
-            `);
-        
-        // Abrir popup si el usuario hace clic en el área
-        rainEchoGroup.on('click', () => echoPopup.openOn(radarMap));
     }
 }
 
 // --------------------------------------------------------------------------
-// 5. Carga de Fotogramas del Radar Doppler (RainViewer API)
+// 6. Carga de Fotogramas del Radar Doppler (RainViewer API)
 // --------------------------------------------------------------------------
 async function loadRainViewerRadarLayers() {
     const timeDisplay = document.getElementById('radarFrameTime');
@@ -262,8 +537,6 @@ async function loadRainViewerRadarLayers() {
         radarFrames = frames;
         currentRadarIndex = radarFrames.length - 1;
 
-        // Crear una ÚNICA capa de mosaico Doppler de alta resiliencia al zoom
-        // Usamos esquema de color 4 (The Weather Channel) o 6 (NEXRAD) para máxima visibilidad
         const initialPath = radarFrames[currentRadarIndex].path;
         const initialUrl = `${radarHost}${initialPath}/256/{z}/{x}/{y}/4/1_1.png`;
 
@@ -276,7 +549,7 @@ async function loadRainViewerRadarLayers() {
             zIndex: 100,
             minNativeZoom: 1,
             minZoom: 2,
-            maxNativeZoom: 7, // RainViewer limita su API libre a zoom 7. Al fijar maxNativeZoom: 7, Leaflet reescala los mosaicos automáticamente y NUNCA pide zooms mayores, eliminando 'Zoom level not supported'
+            maxNativeZoom: 7, // Cero "Zoom level not supported"
             maxZoom: 18,
             tileSize: 256,
             keepBuffer: 8,
@@ -310,7 +583,6 @@ function showRadarFrame(index) {
     const frame = radarFrames[index];
     const newUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`;
 
-    // Cambiar URL de la capa existente: CERO sobrecarga de red ni parpadeos al hacer zoom
     radarTileLayer.setUrl(newUrl);
     updateRadarTimeDisplay(frame.time);
 }
@@ -370,7 +642,7 @@ function toggleRadarSweep() {
 }
 
 // --------------------------------------------------------------------------
-// 6. Inicialización al Cargar el DOM
+// 7. Inicialización al Cargar el DOM
 // --------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -399,4 +671,11 @@ document.addEventListener('DOMContentLoaded', () => {
             window.cityCoordinates.desc
         );
     }
+
+    // Manejar evento 'popstate' para los botones de atrás/adelante del navegador
+    window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.city) {
+            selectCity(e.state.city);
+        }
+    });
 });

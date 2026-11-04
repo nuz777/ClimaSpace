@@ -8,45 +8,47 @@
     <div class="row justify-content-center mb-4">
         <div class="col-lg-12">
             <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
-                <!-- Buscador de Ciudades -->
-                <form asp-controller="Home" asp-action="Index" method="get" class="search-wrapper-white flex-grow-1">
-                    <input type="hidden" name="provider" value="@Model.Provider" />
+                <!-- Buscador de Ciudades AJAX (Sin recargar página) -->
+                <form id="citySearchForm" class="search-wrapper-white flex-grow-1" onsubmit="handleSearchSubmit(event)">
                     <i class="bi bi-search search-icon-blue"></i>
                     <input type="text" 
+                           id="citySearchInput"
                            name="city" 
                            class="form-control form-control-lg search-input-white" 
                            placeholder="Buscar cualquier ciudad (ej. Barranquilla, Medellín, Bogotá, Cartagena, Cali...)" 
                            value="@Model.City"
                            autocomplete="off" />
-                    <button type="submit" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
-                        Buscar
+                    <button type="submit" id="searchSubmitBtn" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
+                        <span id="searchBtnSpinner" class="spinner-border spinner-border-sm d-none me-1" role="status"></span>
+                        <span id="searchBtnText">Buscar</span>
                     </button>
                 </form>
 
-                <!-- Selector de Proveedor (Live API vs Simulación) -->
+                <!-- Selector de Proveedor (Live API vs Simulación - Sin recargar página) -->
                 <div class="provider-toggle-group">
-                    <a asp-action="Index" asp-route-city="@Model.City" asp-route-provider="live" 
-                       class="provider-pill @(Model.Provider == "live" ? "active" : "")">
+                    <button type="button" id="providerLiveBtn" onclick="switchProvider('live')"
+                            class="provider-pill border-0 @(Model.Provider == "live" ? "active" : "")">
                         <i class="bi bi-broadcast"></i> API en Vivo
-                    </a>
-                    <a asp-action="Index" asp-route-city="@Model.City" asp-route-provider="simulated" 
-                       class="provider-pill @(Model.Provider == "simulated" ? "active" : "")">
+                    </button>
+                    <button type="button" id="providerSimBtn" onclick="switchProvider('simulated')"
+                            class="provider-pill border-0 @(Model.Provider == "simulated" ? "active" : "")">
                         <i class="bi bi-cpu"></i> Simulado
-                    </a>
+                    </button>
                 </div>
             </div>
 
             <!-- Accesos rápidos a ciudades (Colombia primero) -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="d-flex align-items-center gap-2 flex-wrap" id="popularCitiesContainer">
                 <span class="badge bg-primary text-white rounded-pill px-3 py-2 small fw-semibold">
                     🇨🇴 Colombia
                 </span>
                 @foreach (var popularCity in Model.PopularCities)
                 {
-                    <a asp-action="Index" asp-route-city="@popularCity" asp-route-provider="@Model.Provider"
-                       class="city-pill-white @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) || (popularCity == "Bogotá" && Model.City.Contains("Bogot")) ? "active" : "")">
+                    <button type="button" onclick="selectCity('@popularCity')"
+                            class="city-pill-white @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) || (popularCity == "Bogotá" && Model.City.Contains("Bogot")) ? "active" : "")"
+                            data-city="@popularCity">
                         @popularCity
-                    </a>
+                    </button>
                 }
             </div>
         </div>
@@ -115,33 +117,33 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold small">
                             <i class="bi bi-geo-alt-fill me-1"></i>Punto Activo en Radar
                         </span>
-                        <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
+                        <span id="selectedCardProviderBadge" class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
                             @(Model.IsLiveApi ? "En Vivo" : "Simulado")
                         </span>
                     </div>
 
                     <h6 class="text-muted text-uppercase small fw-bold mb-1">El tiempo ahora en:</h6>
                     <h2 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2 flex-wrap">
-                        <span>@Model.City</span>
-                        <span class="badge bg-light text-secondary border fs-6 fw-normal">
+                        <span id="selectedCardCity">@Model.City</span>
+                        <span id="selectedCardCountry" class="badge bg-light text-secondary border fs-6 fw-normal">
                             @(Model.Country.Contains("Colombia", StringComparison.OrdinalIgnoreCase) ? "🇨🇴 Colombia" : Model.Country)
                         </span>
                     </h2>
                     <p class="text-muted small mb-3">
-                        <i class="bi bi-clock me-1 text-primary"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
+                        <i class="bi bi-clock me-1 text-primary"></i>Hora local: <span id="selectedCardTime">@Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))</span>
                     </p>
 
                     <!-- Temperatura Actual y Estado -->
                     <div class="d-flex align-items-center gap-3 my-3 p-3 rounded-4 bg-light border">
-                        <i class="bi @Model.Current.IconClass fs-1 text-warning"></i>
+                        <i id="selectedCardIcon" class="bi @Model.Current.IconClass fs-1 text-warning"></i>
                         <div>
                             <div class="d-flex align-items-start">
-                                <span class="fs-1 fw-bold text-dark lh-1" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
+                                <span id="selectedCardTemp" class="fs-1 fw-bold text-dark lh-1" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
                                     @Model.Current.TemperatureC
                                 </span>
                                 <span class="fs-4 fw-semibold text-primary">°C</span>
                             </div>
-                            <div class="text-secondary small fw-medium text-capitalize mt-1">
+                            <div id="selectedCardDesc" class="text-secondary small fw-medium text-capitalize mt-1">
                                 @Model.Current.ConditionDescription
                             </div>
                         </div>
@@ -152,7 +154,7 @@
                         <div class="col-6">
                             <div class="p-2 rounded-3 bg-light border text-center">
                                 <span class="text-muted small d-block">Sensación</span>
-                                <strong class="text-dark" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
+                                <strong id="selectedCardFeelsLike" class="text-dark" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
                                     @Model.Current.FeelsLikeC°C
                                 </strong>
                             </div>
@@ -160,19 +162,19 @@
                         <div class="col-6">
                             <div class="p-2 rounded-3 bg-light border text-center">
                                 <span class="text-muted small d-block">Humedad</span>
-                                <strong class="text-info">@Model.Current.Humidity%</strong>
+                                <strong id="selectedCardHumidity" class="text-info">@Model.Current.Humidity%</strong>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="p-2 rounded-3 bg-light border text-center">
                                 <span class="text-muted small d-block">Viento</span>
-                                <strong class="text-dark">@Model.Current.WindSpeedKmh km/h</strong>
+                                <strong id="selectedCardWind" class="text-dark">@Model.Current.WindSpeedKmh km/h</strong>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="p-2 rounded-3 bg-light border text-center">
                                 <span class="text-muted small d-block">Calidad Aire</span>
-                                <strong class="text-success small">Buena</strong>
+                                <strong id="selectedCardAirQuality" class="text-success small">Buena</strong>
                             </div>
                         </div>
                     </div>
@@ -181,7 +183,7 @@
                 <!-- Ayuda visual interactiva -->
                 <div class="p-2 rounded-3 bg-primary bg-opacity-10 text-primary small text-center mt-2">
                     <i class="bi bi-hand-index-thumb me-1"></i>
-                    Haz clic en los <strong>puntos azulitos</strong> del mapa para explorar el clima de cualquier región.
+                    Haz clic en los <strong>puntos azulitos</strong> del mapa para explorar el clima sin recargar la página.
                 </div>
             </div>
         </div>
@@ -197,17 +199,17 @@
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                            <h2 class="h3 fw-bold mb-0 text-white">@Model.City</h2>
-                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">@Model.Country</span>
-                            <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
+                            <h2 id="heroCityName" class="h3 fw-bold mb-0 text-white">@Model.City</h2>
+                            <span id="heroCountryBadge" class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">@Model.Country</span>
+                            <span id="heroProviderBadge" class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
                                 <i class="bi @(Model.IsLiveApi ? "bi-check-circle-fill" : "bi-gear-wide-connected") me-1"></i>
                                 @(Model.IsLiveApi ? "Datos en Vivo (Open-Meteo)" : "Modo Simulación")
                             </span>
                         </div>
                         <p class="text-white-50 mb-0 small">
-                            <i class="bi bi-pin-map-fill me-1 text-info"></i>Lat: @Model.Latitude, Lon: @Model.Longitude
+                            <i class="bi bi-pin-map-fill me-1 text-info"></i><span id="heroCoords">Lat: @Model.Latitude, Lon: @Model.Longitude</span>
                             <span class="mx-2">&bull;</span>
-                            <i class="bi bi-clock me-1 text-info"></i>Actualizado para @Model.City
+                            <i class="bi bi-clock me-1 text-info"></i><span id="heroStatusText">Actualizado para @Model.City</span>
                         </p>
                     </div>
                     <button class="btn btn-sm btn-light bg-opacity-25 text-white border-0 rounded-pill px-3 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#apiModal">
@@ -218,27 +220,27 @@
 
                 <div class="row align-items-center my-4">
                     <div class="col-sm-7 d-flex align-items-center gap-4">
-                        <i class="bi @Model.Current.IconClass weather-hero-icon text-warning"></i>
+                        <i id="heroIcon" class="bi @Model.Current.IconClass weather-hero-icon text-warning"></i>
                         <div>
                             <div class="d-flex align-items-start">
-                                <span class="temp-large" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
+                                <span id="heroTemp" class="temp-large" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
                                     @Model.Current.TemperatureC
                                 </span>
                                 <span class="temp-unit">°C</span>
                             </div>
                             <div class="text-white-50 small mt-1">
                                 Sensación térmica: 
-                                <strong class="text-white" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
+                                <strong id="heroFeelsLike" class="text-white" data-temp-c="@Model.Current.FeelsLikeC" data-temp-f="@Model.Current.FeelsLikeF">
                                     @Model.Current.FeelsLikeC°C
                                 </strong>
                             </div>
                         </div>
                     </div>
                     <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
-                        <h4 class="fw-semibold mb-2 text-capitalize text-white">@Model.Current.ConditionDescription</h4>
+                        <h4 id="heroDesc" class="fw-semibold mb-2 text-capitalize text-white">@Model.Current.ConditionDescription</h4>
                         <div class="d-inline-flex flex-column gap-1 text-white-50 small text-sm-end">
-                            <div><i class="bi bi-sunrise text-warning me-1"></i> Amanecer: <strong class="text-white">@Model.Current.Sunrise</strong></div>
-                            <div><i class="bi bi-sunset text-warning me-1"></i> Atardecer: <strong class="text-white">@Model.Current.Sunset</strong></div>
+                            <div><i class="bi bi-sunrise text-warning me-1"></i> Amanecer: <strong id="heroSunrise" class="text-white">@Model.Current.Sunrise</strong></div>
+                            <div><i class="bi bi-sunset text-warning me-1"></i> Atardecer: <strong id="heroSunset" class="text-white">@Model.Current.Sunset</strong></div>
                         </div>
                     </div>
                 </div>
@@ -252,7 +254,7 @@
                         <span class="small text-white-50">Desliza &rarr;</span>
                     </div>
 
-                    <div class="hourly-scroll-white">
+                    <div id="hourlyForecastContainer" class="hourly-scroll-white">
                         @foreach (var hour in Model.Hourly)
                         {
                             <div class="hourly-card-white">
@@ -288,7 +290,7 @@
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Semanal</span>
                 </div>
 
-                <div class="daily-list">
+                <div id="dailyForecastContainer" class="daily-list">
                     @foreach (var day in Model.Daily)
                     {
                         <div class="daily-row-white d-flex align-items-center justify-content-between py-3">
@@ -338,7 +340,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Humedad</div>
-                    <div class="stat-value-clean">@Model.Current.Humidity%</div>
+                    <div id="metricHumidity" class="stat-value-clean">@Model.Current.Humidity%</div>
                 </div>
             </div>
         </div>
@@ -349,8 +351,8 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Viento</div>
-                    <div class="stat-value-clean">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal text-muted">km/h</span></div>
-                    <div class="small text-muted">Dir: @Model.Current.WindDirection</div>
+                    <div class="stat-value-clean"><span id="metricWind">@Model.Current.WindSpeedKmh</span> <span class="fs-6 fw-normal text-muted">km/h</span></div>
+                    <div class="small text-muted">Dir: <span id="metricWindDir">@Model.Current.WindDirection</span></div>
                 </div>
             </div>
         </div>
@@ -361,7 +363,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Índice UV</div>
-                    <div class="stat-value-clean">@Model.Current.UvIndex <span class="fs-6 fw-normal text-muted">/ 11</span></div>
+                    <div class="stat-value-clean"><span id="metricUv">@Model.Current.UvIndex</span> <span class="fs-6 fw-normal text-muted">/ 11</span></div>
                 </div>
             </div>
         </div>
@@ -372,7 +374,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Presión</div>
-                    <div class="stat-value-clean">@Model.Current.PressureHpa <span class="fs-6 fw-normal text-muted">hPa</span></div>
+                    <div class="stat-value-clean"><span id="metricPressure">@Model.Current.PressureHpa</span> <span class="fs-6 fw-normal text-muted">hPa</span></div>
                 </div>
             </div>
         </div>
@@ -383,7 +385,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Visibilidad</div>
-                    <div class="stat-value-clean">@Model.Current.VisibilityKm <span class="fs-6 fw-normal text-muted">km</span></div>
+                    <div class="stat-value-clean"><span id="metricVisibility">@Model.Current.VisibilityKm</span> <span class="fs-6 fw-normal text-muted">km</span></div>
                 </div>
             </div>
         </div>
@@ -394,7 +396,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">P. de Rocío</div>
-                    <div class="stat-value-clean" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
+                    <div id="metricDewPoint" class="stat-value-clean" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
                         @Model.Current.DewPointC°C
                     </div>
                 </div>
@@ -407,7 +409,7 @@
                 </div>
                 <div>
                     <div class="stat-label-clean">Calidad del Aire</div>
-                    <div class="stat-value-clean fs-6 text-primary">@Model.Current.AirQuality</div>
+                    <div id="metricAirQuality" class="stat-value-clean fs-6 text-primary">@Model.Current.AirQuality</div>
                 </div>
             </div>
         </div>
