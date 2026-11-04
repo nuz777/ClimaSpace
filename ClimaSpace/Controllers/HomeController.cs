@@ -7,20 +7,39 @@ namespace ClimaSpace.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly IWeatherService _weatherService;
+    private readonly OpenMeteoWeatherService _openMeteoService;
+    private readonly SimulatedWeatherService _simulatedService;
     private readonly ILogger<HomeController> _logger;
 
-    public HomeController(IWeatherService weatherService, ILogger<HomeController> logger)
+    public HomeController(
+        OpenMeteoWeatherService openMeteoService,
+        SimulatedWeatherService simulatedService,
+        ILogger<HomeController> logger)
     {
-        _weatherService = weatherService;
+        _openMeteoService = openMeteoService;
+        _simulatedService = simulatedService;
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index(string? city = "Bogotá")
+    public async Task<IActionResult> Index(string? city = "Bogotá", string? provider = "live")
     {
+        city = string.IsNullOrWhiteSpace(city) ? "Bogotá" : city.Trim();
+        provider = string.Equals(provider, "simulated", StringComparison.OrdinalIgnoreCase) ? "simulated" : "live";
+
         try
         {
-            var weatherReport = await _weatherService.GetWeatherReportAsync(city);
+            WeatherReport weatherReport;
+            if (provider == "simulated")
+            {
+                weatherReport = await _simulatedService.GetWeatherReportAsync(city);
+                weatherReport.Provider = "simulated";
+            }
+            else
+            {
+                weatherReport = await _openMeteoService.GetWeatherReportAsync(city);
+                weatherReport.Provider = "live";
+            }
+
             return View(weatherReport);
         }
         catch (Exception ex)
@@ -33,7 +52,7 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> QuickSearch(string query)
     {
-        var cities = await _weatherService.GetPopularCitiesAsync();
+        var cities = await _simulatedService.GetPopularCitiesAsync();
         var filtered = cities.Where(c => c.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         return Json(filtered);
     }

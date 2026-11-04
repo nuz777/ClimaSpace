@@ -1,80 +1,85 @@
-/* ClimaSpace - Estilos Modernos de la Aplicación Meteorológica */
+/* ==========================================================================
+   ClimaSpace - Sistema de Diseño "Blanco con Azul" (Modern Neo-Clean Weather)
+   ========================================================================== */
 
 :root {
     --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --glass-bg: rgba(255, 255, 255, 0.12);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
-    --glass-blur: blur(16px);
-    --text-primary: #ffffff;
-    --text-muted: rgba(255, 255, 255, 0.75);
+    
+    /* Paleta Blanco y Azul */
+    --color-bg: #f4f8fc;
+    --color-card-bg: #ffffff;
+    --color-card-border: #e2e8f0;
+    --color-card-border-hover: #bfdbfe;
+    
+    --color-primary: #2563eb;       /* Azul Real */
+    --color-primary-dark: #1d4ed8;  /* Azul Profundo */
+    --color-primary-hover: #1e40af;
+    --color-accent-sky: #0284c7;     /* Azul Cielo */
+    --color-accent-cyan: #06b6d4;    /* Cian Eléctrico */
+    
+    --color-soft-blue: #eff6ff;     /* Azul Niebla Fondo */
+    --color-soft-blue-border: #dbeafe;
+    
+    --color-text-title: #0f172a;    /* Navy Oscuro */
+    --color-text-body: #334155;     /* Slate */
+    --color-text-muted: #64748b;    /* Gris Suave */
+    
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 8px 24px rgba(37, 99, 235, 0.08);
+    --shadow-lg: 0 16px 40px rgba(37, 99, 235, 0.12);
 }
 
 body.weather-app-body {
     font-family: var(--font-main);
-    color: var(--text-primary);
+    color: var(--color-text-body);
+    background-color: var(--color-bg);
+    background-image: 
+        radial-gradient(circle at 10% 15%, rgba(219, 234, 254, 0.5) 0%, transparent 35%),
+        radial-gradient(circle at 90% 85%, rgba(191, 219, 254, 0.4) 0%, transparent 40%);
+    background-attachment: fixed;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     margin: 0;
-    transition: background 0.8s ease-in-out;
-}
-
-/* Temas dinámicos de fondo según el clima */
-body.theme-sunny {
-    background: linear-gradient(135deg, #1e528e 0%, #3a7bd5 40%, #f3904f 100%);
-}
-
-body.theme-night {
-    background: linear-gradient(135deg, #0b0f19 0%, #162035 50%, #1a1a2e 100%);
-}
-
-body.theme-partly-cloudy {
-    background: linear-gradient(135deg, #2c3e50 0%, #3498db 50%, #2980b9 100%);
-}
-
-body.theme-cloudy {
-    background: linear-gradient(135deg, #373b44 0%, #4286f4 60%, #536976 100%);
-}
-
-body.theme-rainy {
-    background: linear-gradient(135deg, #232526 0%, #414345 40%, #2c3e50 100%);
-}
-
-body.theme-stormy {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-}
-
-body.theme-snow {
-    background: linear-gradient(135deg, #606c88 0%, #3f4c6b 50%, #7986cb 100%);
-}
-
-body.theme-fog,
-body.theme-default {
-    background: linear-gradient(135deg, #29323c 0%, #485563 100%);
 }
 
 main {
     flex: 1;
 }
 
-/* Glassmorphism Navigation */
-.bg-glass-nav {
-    background: rgba(18, 25, 38, 0.65) !important;
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-bottom: 1px solid var(--glass-border);
+/* ==========================================================================
+   Navegación Superior Blanco y Azul
+   ========================================================================== */
+.bg-white-nav {
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--color-card-border);
 }
 
 .brand-icon-wrapper {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.15);
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-sky) 100%);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.brand-text {
+    font-size: 1.35rem;
+    letter-spacing: -0.5px;
+    color: var(--color-text-title);
+}
+
+.badge-brand {
+    background: var(--color-soft-blue);
+    color: var(--color-primary-dark);
+    border: 1px solid var(--color-soft-blue-border);
+    font-weight: 600;
 }
 
 .pulse-indicator {
@@ -82,131 +87,80 @@ main {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: #0dcaf0;
-    box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7);
-    animation: pulse-ring 1.8s infinite;
+    background-color: #10b981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-green 1.8s infinite;
 }
 
-@keyframes pulse-ring {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(13, 202, 240, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
+@keyframes pulse-green {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-/* Selector de Unidades */
-.unit-toggle .btn {
+.unit-toggle-blue .btn {
     border-radius: 20px;
     font-weight: 600;
     padding: 0.25rem 0.75rem;
     font-size: 0.85rem;
+    color: var(--color-primary);
+    border-color: var(--color-primary);
 }
 
-.unit-toggle .btn.active {
-    background: #ffffff;
-    color: #111827;
-    border-color: #ffffff;
+.unit-toggle-blue .btn.active {
+    background: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
 }
 
-/* Tarjetas Vidrio (Glassmorphism) */
-.glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+/* ==========================================================================
+   Tarjetas Limpias Blancas (White Cards)
+   ========================================================================== */
+.white-card {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
     border-radius: 20px;
-    box-shadow: var(--glass-shadow);
-    color: var(--text-primary);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: var(--shadow-md);
+    transition: all 0.25s ease;
 }
 
-.glass-card:hover {
-    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35);
+.white-card:hover {
+    border-color: var(--color-card-border-hover);
+    box-shadow: var(--shadow-lg);
 }
 
-.glass-hero {
+/* Hero Card: Azul Real Vibrante */
+.hero-weather-card {
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #3b82f6 100%);
+    border-radius: 24px;
+    color: #ffffff;
     padding: 2.2rem;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 16px 36px rgba(37, 99, 235, 0.28);
 }
 
-.glass-hero::before {
+.hero-weather-card::after {
     content: '';
     position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+    top: -40%;
+    right: -15%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
     pointer-events: none;
 }
 
-/* Buscador de Ciudad */
-.search-wrapper {
-    position: relative;
-}
-
-.search-input {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid var(--glass-border);
-    color: #ffffff !important;
-    border-radius: 50px;
-    padding: 0.75rem 1.25rem 0.75rem 3rem;
-    backdrop-filter: var(--glass-blur);
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.search-input::placeholder {
-    color: rgba(255, 255, 255, 0.65);
-}
-
-.search-input:focus {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
-}
-
-.search-icon {
-    position: absolute;
-    left: 1.15rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgba(255, 255, 255, 0.75);
-    font-size: 1.1rem;
-    pointer-events: none;
-}
-
-.city-pill {
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 30px;
-    padding: 0.35rem 0.9rem;
-    font-size: 0.85rem;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-
-.city-pill:hover,
-.city-pill.active {
-    background: #ffffff;
-    color: #1a1a2e;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* Icono Flotante del Clima Principal */
 .weather-hero-icon {
-    font-size: 5.5rem;
+    font-size: 5rem;
     display: inline-block;
     animation: float-icon 4s ease-in-out infinite;
-    filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
 }
 
 @keyframes float-icon {
     0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
+    50% { transform: translateY(-7px); }
 }
 
 .temp-large {
@@ -219,130 +173,330 @@ main {
 .temp-unit {
     font-size: 2.2rem;
     vertical-align: super;
-    font-weight: 500;
-    opacity: 0.85;
+    font-weight: 600;
+    opacity: 0.9;
 }
 
-/* Stat Cards (Grid Métricas) */
-.stat-box {
-    padding: 1.25rem;
+/* ==========================================================================
+   Buscador y Selector de Fuente
+   ========================================================================== */
+.search-wrapper-white {
+    position: relative;
+}
+
+.search-input-white {
+    background: #ffffff;
+    border: 1px solid var(--color-card-border);
+    color: var(--color-text-title) !important;
+    border-radius: 50px;
+    padding: 0.85rem 1.25rem 0.85rem 3.2rem;
+    font-size: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.25s ease;
+}
+
+.search-input-white:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.search-icon-blue {
+    position: absolute;
+    left: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-primary);
+    font-size: 1.15rem;
+    pointer-events: none;
+}
+
+.city-pill-white {
+    background: #ffffff;
+    color: var(--color-text-body);
+    border: 1px solid var(--color-card-border);
+    border-radius: 30px;
+    padding: 0.35rem 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.city-pill-white:hover,
+.city-pill-white.active {
+    background: var(--color-soft-blue);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+}
+
+/* Selector de Proveedor (API vs Simulado) */
+.provider-toggle-group {
+    background: #ffffff;
+    border: 1px solid var(--color-card-border);
+    border-radius: 40px;
+    padding: 3px;
+    display: inline-flex;
+    box-shadow: var(--shadow-sm);
+}
+
+.provider-pill {
+    padding: 0.35rem 0.9rem;
+    border-radius: 30px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--color-text-muted);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.provider-pill.active {
+    background: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* ==========================================================================
+   Radar Doppler Meteorológico (Leaflet Map Integration)
+   ========================================================================== */
+.radar-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.radar-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--color-card-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.radar-map-wrapper {
+    position: relative;
+    width: 100%;
+    height: 390px;
+    background: #e5e9f0;
+}
+
+#weatherRadarMap {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Efecto de Barrido de Radar (Doppler Sweep Overlay) */
+.radar-sweep-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 320px;
+    height: 320px;
+    margin-top: -160px;
+    margin-left: -160px;
+    border-radius: 50%;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+    pointer-events: none;
+    z-index: 500;
+    display: none;
+}
+
+.radar-sweep-overlay.active {
+    display: block;
+}
+
+.radar-sweep-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg at 50% 50%, rgba(6, 182, 212, 0.35) 0deg, rgba(6, 182, 212, 0) 60deg);
+    animation: radar-spin 3s linear infinite;
+}
+
+@keyframes radar-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.radar-controls-bar {
+    padding: 0.85rem 1.5rem;
+    background: #ffffff;
+    border-top: 1px solid var(--color-card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.radar-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+}
+
+.radar-gradient-bar {
+    width: 110px;
+    height: 8px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #10b981 0%, #eab308 35%, #f97316 70%, #ef4444 100%);
+}
+
+/* Pin de Ciudad Pulsante en el Radar */
+.radar-city-pin {
+    width: 16px;
+    height: 16px;
+    background: var(--color-primary);
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.4);
+    animation: pin-pulse 2s infinite;
+}
+
+@keyframes pin-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+/* ==========================================================================
+   Grilla de Métricas Secundarias
+   ========================================================================== */
+.stat-box-white {
+    padding: 1.2rem;
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    transition: transform 0.2s ease;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid var(--color-card-border);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
 }
 
-.stat-box:hover {
+.stat-box-white:hover {
     transform: translateY(-3px);
-    background: rgba(255, 255, 255, 0.14);
+    border-color: var(--color-card-border-hover);
+    box-shadow: var(--shadow-md);
 }
 
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.15);
+.stat-icon-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--color-soft-blue);
+    color: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     flex-shrink: 0;
 }
 
-.stat-title {
-    font-size: 0.8rem;
+.stat-label-clean {
+    font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-muted);
-    margin-bottom: 0.2rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    margin-bottom: 0.15rem;
 }
 
-.stat-value {
+.stat-value-clean {
     font-size: 1.25rem;
     font-weight: 700;
+    color: var(--color-text-title);
 }
 
-/* Pronóstico por Horas (Ribbon Horizontal) */
-.hourly-scroll {
+/* ==========================================================================
+   Pronóstico por Horas (24 Horas)
+   ========================================================================== */
+.hourly-scroll-white {
     display: flex;
-    gap: 0.85rem;
+    gap: 0.75rem;
     overflow-x: auto;
     padding-bottom: 0.5rem;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    scrollbar-color: #cbd5e1 transparent;
 }
 
-.hourly-scroll::-webkit-scrollbar {
+.hourly-scroll-white::-webkit-scrollbar {
     height: 6px;
 }
 
-.hourly-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+.hourly-scroll-white::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
     border-radius: 10px;
 }
 
-.hourly-card {
+.hourly-card-white {
     min-width: 82px;
     text-align: center;
-    padding: 1rem 0.6rem;
+    padding: 0.9rem 0.6rem;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff;
     flex-shrink: 0;
     transition: all 0.2s ease;
 }
 
-.hourly-card:hover {
-    background: rgba(255, 255, 255, 0.18);
+.hourly-card-white:hover {
+    background: rgba(255, 255, 255, 0.25);
     transform: translateY(-2px);
 }
 
-/* Pronóstico Diario (Lista con barras) */
-.daily-row {
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+/* ==========================================================================
+   Pronóstico a 7 Días (Lista Blanca)
+   ========================================================================== */
+.daily-row-white {
+    padding: 0.85rem 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
     transition: background 0.2s ease;
 }
 
-.daily-row:last-child {
+.daily-row-white:last-child {
     border-bottom: none;
 }
 
-.daily-row:hover {
-    background: rgba(255, 255, 255, 0.06);
+.daily-row-white:hover {
+    background: var(--color-soft-blue);
     border-radius: 10px;
 }
 
-.temp-bar-bg {
+.temp-bar-bg-blue {
     height: 6px;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.15);
+    background: #e2e8f0;
     overflow: hidden;
     position: relative;
 }
 
-.temp-bar-fill {
+.temp-bar-fill-blue {
     height: 100%;
     border-radius: 4px;
-    background: linear-gradient(90deg, #0dcaf0, #ffc107);
+    background: linear-gradient(90deg, #38bdf8 0%, #2563eb 100%);
 }
 
-/* Footer Glass */
-.footer-glass {
-    background: rgba(10, 15, 25, 0.7);
-    backdrop-filter: var(--glass-blur);
-}
-
-.border-white-10 {
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Modal Info Arquitectura */
-.modal-content.glass-card {
-    background: rgba(20, 30, 45, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    color: #ffffff;
+/* ==========================================================================
+   Footer Limpio
+   ========================================================================== */
+.footer-clean {
+    background: #ffffff;
+    border-top: 1px solid var(--color-card-border);
 }

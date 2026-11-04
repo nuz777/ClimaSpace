@@ -1,37 +1,48 @@
 @model ClimaSpace.Models.WeatherReport
 @{
-    ViewData["Title"] = $"{Model.City} - Clima en Tiempo Real";
+    ViewData["Title"] = $"{Model.City} - Radar y Clima";
 }
 
-<script>
-    // Aplicar el tema dinámico al body según la condición climática
-    document.body.className = 'weather-app-body @Model.ThemeClass';
-</script>
-
 <div class="container py-4">
-    <!-- Barra Superior: Buscador y Píldoras de Ciudades Populares -->
+    <!-- Barra Superior: Buscador, Sugerencias y Selector de Fuente (API vs Simulado) -->
     <div class="row justify-content-center mb-4">
-        <div class="col-lg-9">
-            <form asp-controller="Home" asp-action="Index" method="get" class="search-wrapper mb-3">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" 
-                       name="city" 
-                       class="form-control form-control-lg search-input" 
-                       placeholder="Buscar cualquier ciudad en el mundo (ej. Madrid, Tokio, Buenos Aires, Miami...)" 
-                       value="@Model.City"
-                       autocomplete="off" />
-                <button type="submit" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
-                    Consultar
-                </button>
-            </form>
+        <div class="col-lg-10">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+                <!-- Buscador de Ciudades -->
+                <form asp-controller="Home" asp-action="Index" method="get" class="search-wrapper-white flex-grow-1">
+                    <input type="hidden" name="provider" value="@Model.Provider" />
+                    <i class="bi bi-search search-icon-blue"></i>
+                    <input type="text" 
+                           name="city" 
+                           class="form-control form-control-lg search-input-white" 
+                           placeholder="Buscar cualquier ciudad (ej. Madrid, Tokio, Bogotá, Nueva York, Miami...)" 
+                           value="@Model.City"
+                           autocomplete="off" />
+                    <button type="submit" class="btn btn-primary rounded-pill position-absolute end-0 top-50 translate-middle-y me-2 px-4 shadow-sm">
+                        Buscar
+                    </button>
+                </form>
 
-            <!-- Acceso rápido a ciudades -->
+                <!-- Selector de Proveedor (Live API vs Simulación) -->
+                <div class="provider-toggle-group">
+                    <a asp-action="Index" asp-route-city="@Model.City" asp-route-provider="live" 
+                       class="provider-pill @(Model.Provider == "live" ? "active" : "")">
+                        <i class="bi bi-broadcast"></i> API en Vivo
+                    </a>
+                    <a asp-action="Index" asp-route-city="@Model.City" asp-route-provider="simulated" 
+                       class="provider-pill @(Model.Provider == "simulated" ? "active" : "")">
+                        <i class="bi bi-cpu"></i> Simulado
+                    </a>
+                </div>
+            </div>
+
+            <!-- Accesos rápidos a ciudades -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-white-50 small me-1"><i class="bi bi-geo-alt-fill me-1"></i>Sugerencias:</span>
+                <span class="text-secondary small fw-semibold me-1"><i class="bi bi-geo-alt-fill text-primary me-1"></i>Sugerencias:</span>
                 @foreach (var popularCity in Model.PopularCities)
                 {
-                    <a asp-action="Index" asp-route-city="@popularCity" 
-                       class="city-pill @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                    <a asp-action="Index" asp-route-city="@popularCity" asp-route-provider="@Model.Provider"
+                       class="city-pill-white @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) ? "active" : "")">
                         @popularCity
                     </a>
                 }
@@ -39,33 +50,37 @@
         </div>
     </div>
 
-    <!-- Contenido Principal: Grid de 2 Columnas -->
+    <!-- Layout Principal -->
     <div class="row g-4">
-        <!-- Columna Izquierda: Tarjeta Hero y Pronóstico por Horas -->
+        <!-- Columna Izquierda: Tarjeta Hero (Azul Real) y Cinta 24h -->
         <div class="col-lg-8">
-            <!-- Tarjeta Principal (Hero) -->
-            <div class="glass-card glass-hero mb-4">
+            <!-- Tarjeta Hero Azul -->
+            <div class="hero-weather-card mb-4">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <h1 class="h2 fw-bold mb-0">@Model.City</h1>
-                            <span class="badge bg-white bg-opacity-25 rounded-pill px-3 py-1 text-white">@Model.Country</span>
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                            <h1 class="h2 fw-bold mb-0 text-white">@Model.City</h1>
+                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">@Model.Country</span>
+                            <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
+                                <i class="bi @(Model.IsLiveApi ? "bi-check-circle-fill" : "bi-gear-wide-connected") me-1"></i>
+                                @(Model.IsLiveApi ? "Datos en Vivo (Open-Meteo)" : "Modo Simulación")
+                            </span>
                         </div>
                         <p class="text-white-50 mb-0 small">
-                            <i class="bi bi-compass me-1"></i>Lat: @Model.Latitude, Lon: @Model.Longitude
+                            <i class="bi bi-pin-map-fill me-1 text-info"></i>Lat: @Model.Latitude, Lon: @Model.Longitude
                             <span class="mx-2">&bull;</span>
-                            <i class="bi bi-clock me-1"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
+                            <i class="bi bi-clock me-1 text-info"></i>Hora local: @Model.LocalTime.ToString("HH:mm") (@Model.LocalTime.ToString("dd MMM yyyy"))
                         </p>
                     </div>
-                    <button class="btn btn-sm btn-outline-light rounded-pill px-3 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#archModal">
-                        <i class="bi bi-info-circle"></i>
-                        <span>Info Simulación</span>
+                    <button class="btn btn-sm btn-light bg-opacity-25 text-white border-0 rounded-pill px-3 d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#apiModal">
+                        <i class="bi bi-sliders"></i>
+                        <span>Info API</span>
                     </button>
                 </div>
 
                 <div class="row align-items-center my-4">
                     <div class="col-sm-7 d-flex align-items-center gap-4">
-                        <i class="bi @Model.Current.IconClass weather-hero-icon"></i>
+                        <i class="bi @Model.Current.IconClass weather-hero-icon text-warning"></i>
                         <div>
                             <div class="d-flex align-items-start">
                                 <span class="temp-large" data-temp-c="@Model.Current.TemperatureC" data-temp-f="@Model.Current.TemperatureF" data-show-unit="false">
@@ -82,7 +97,7 @@
                         </div>
                     </div>
                     <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
-                        <h4 class="fw-semibold mb-2 text-capitalize">@Model.Current.ConditionDescription</h4>
+                        <h4 class="fw-semibold mb-2 text-capitalize text-white">@Model.Current.ConditionDescription</h4>
                         <div class="d-inline-flex flex-column gap-1 text-white-50 small text-sm-end">
                             <div><i class="bi bi-sunrise text-warning me-1"></i> Amanecer: <strong class="text-white">@Model.Current.Sunrise</strong></div>
                             <div><i class="bi bi-sunset text-warning me-1"></i> Atardecer: <strong class="text-white">@Model.Current.Sunset</strong></div>
@@ -91,7 +106,7 @@
                 </div>
 
                 <!-- Pronóstico Próximas 24 Horas -->
-                <div class="mt-4 pt-3 border-top border-white-10">
+                <div class="mt-4 pt-3 border-top border-white border-opacity-25">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <h6 class="fw-bold mb-0 text-uppercase small text-white-50">
                             <i class="bi bi-clock-history me-1 text-info"></i> Pronóstico de las Próximas 24 Horas
@@ -99,10 +114,10 @@
                         <span class="small text-white-50">Desliza &rarr;</span>
                     </div>
 
-                    <div class="hourly-scroll">
+                    <div class="hourly-scroll-white">
                         @foreach (var hour in Model.Hourly)
                         {
-                            <div class="hourly-card">
+                            <div class="hourly-card-white">
                                 <div class="small text-white-50 mb-1">@hour.Time</div>
                                 <i class="bi @hour.IconClass fs-3 my-2 d-block"></i>
                                 <div class="fw-bold mb-1" data-temp-c="@hour.TemperatureC" data-temp-f="@hour.TemperatureF">
@@ -124,115 +139,164 @@
                 </div>
             </div>
 
-            <!-- Grilla de Métricas Secundarias -->
+            <!-- Radar Meteorológico Doppler en Vivo -->
+            <div class="white-card radar-card mb-4">
+                <div class="radar-header">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="stat-icon-circle" style="width: 36px; height: 36px; font-size: 1.1rem;">
+                            <i class="bi bi-radar"></i>
+                        </span>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-primary">Radar Doppler Meteorológico</h5>
+                            <span class="text-muted small">Precipitación, lluvia y ecos satelitales en tiempo real</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Botón Barrido de Radar -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRadarSweep" onclick="toggleRadarSweep()">
+                            <i class="bi bi-bullseye me-1"></i>Escaner Doppler
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visor del Mapa Leaflet -->
+                <div class="radar-map-wrapper">
+                    <div id="weatherRadarMap"></div>
+                    <!-- Overlay de Barrido Giratorio -->
+                    <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
+                </div>
+
+                <!-- Barra de Controles del Radar -->
+                <div class="radar-controls-bar">
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" id="btnRadarPlay" onclick="toggleRadarAnimation()">
+                            <i class="bi bi-play-fill"></i> Reproducir
+                        </button>
+                        <span class="small text-muted" id="radarFrameTime">
+                            <span class="spinner-border spinner-border-sm text-primary me-1" role="status"></span>
+                            Iniciando radar...
+                        </span>
+                    </div>
+
+                    <!-- Leyenda de Intensidad de Lluvia -->
+                    <div class="radar-legend">
+                        <span>Llovizna</span>
+                        <div class="radar-gradient-bar"></div>
+                        <span class="text-danger fw-semibold">Tormenta</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla de Métricas Secundarias (Blanco y Azul) -->
             <div class="row g-3">
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-info">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle">
                             <i class="bi bi-droplet-half"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Humedad</div>
-                            <div class="stat-value">@Model.Current.Humidity%</div>
+                            <div class="stat-label-clean">Humedad</div>
+                            <div class="stat-value-clean">@Model.Current.Humidity%</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-primary">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle">
                             <i class="bi bi-wind"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Viento</div>
-                            <div class="stat-value">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal">km/h</span></div>
-                            <div class="small text-white-50">Dir: @Model.Current.WindDirection</div>
+                            <div class="stat-label-clean">Viento</div>
+                            <div class="stat-value-clean">@Model.Current.WindSpeedKmh <span class="fs-6 fw-normal text-muted">km/h</span></div>
+                            <div class="small text-muted">Dir: @Model.Current.WindDirection</div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-warning">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle text-warning">
                             <i class="bi bi-brightness-high"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Índice UV</div>
-                            <div class="stat-value">@Model.Current.UvIndex <span class="fs-6 fw-normal">/ 11</span></div>
+                            <div class="stat-label-clean">Índice UV</div>
+                            <div class="stat-value-clean">@Model.Current.UvIndex <span class="fs-6 fw-normal text-muted">/ 11</span></div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-danger">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle text-danger">
                             <i class="bi bi-speedometer2"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Presión</div>
-                            <div class="stat-value">@Model.Current.PressureHpa <span class="fs-6 fw-normal">hPa</span></div>
+                            <div class="stat-label-clean">Presión</div>
+                            <div class="stat-value-clean">@Model.Current.PressureHpa <span class="fs-6 fw-normal text-muted">hPa</span></div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-success">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle text-success">
                             <i class="bi bi-eye"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Visibilidad</div>
-                            <div class="stat-value">@Model.Current.VisibilityKm <span class="fs-6 fw-normal">km</span></div>
+                            <div class="stat-label-clean">Visibilidad</div>
+                            <div class="stat-value-clean">@Model.Current.VisibilityKm <span class="fs-6 fw-normal text-muted">km</span></div>
                         </div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-info">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle">
                             <i class="bi bi-thermometer-half"></i>
                         </div>
                         <div>
-                            <div class="stat-title">P. de Rocío</div>
-                            <div class="stat-value" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
+                            <div class="stat-label-clean">P. de Rocío</div>
+                            <div class="stat-value-clean" data-temp-c="@Model.Current.DewPointC" data-temp-f="@Math.Round(Model.Current.DewPointC * 9.0 / 5.0 + 32.0, 1)">
                                 @Model.Current.DewPointC°C
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-6">
-                    <div class="glass-card stat-box">
-                        <div class="stat-icon text-success">
+                    <div class="stat-box-white">
+                        <div class="stat-icon-circle text-info">
                             <i class="bi bi-shield-check"></i>
                         </div>
                         <div>
-                            <div class="stat-title">Calidad del Aire</div>
-                            <div class="stat-value fs-6">@Model.Current.AirQuality</div>
+                            <div class="stat-label-clean">Calidad del Aire</div>
+                            <div class="stat-value-clean fs-6 text-primary">@Model.Current.AirQuality</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Columna Derecha: Pronóstico a 7 Días -->
+        <!-- Columna Derecha: Pronóstico Semanal (7 Días) -->
         <div class="col-lg-4">
-            <div class="glass-card p-4 h-100">
-                <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-white-10">
-                    <h5 class="fw-bold mb-0">
-                        <i class="bi bi-calendar-week me-2 text-warning"></i>Pronóstico de 7 Días
+            <div class="white-card p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="bi bi-calendar-week me-2"></i>Pronóstico de 7 Días
                     </h5>
-                    <span class="badge bg-white bg-opacity-10 text-white-50">Semanal</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Semanal</span>
                 </div>
 
                 <div class="daily-list">
                     @foreach (var day in Model.Daily)
                     {
-                        <div class="daily-row d-flex align-items-center justify-content-between py-3">
+                        <div class="daily-row-white d-flex align-items-center justify-content-between py-3">
                             <div style="min-width: 90px;">
-                                <div class="fw-bold">@day.DayName</div>
-                                <div class="small text-white-50">@day.Date.ToString("dd MMM")</div>
+                                <div class="fw-bold text-dark">@day.DayName</div>
+                                <div class="small text-muted">@day.Date.ToString("dd MMM")</div>
                             </div>
                             
                             <div class="d-flex align-items-center gap-2">
                                 <i class="bi @day.IconClass fs-4"></i>
                                 @if (day.PrecipitationProbability > 15)
                                 {
-                                    <span class="badge bg-primary bg-opacity-50 text-white small" style="font-size: 0.7rem;">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle small" style="font-size: 0.72rem;">
                                         @day.PrecipitationProbability%
                                     </span>
                                 }
@@ -240,13 +304,13 @@
 
                             <div class="text-end" style="min-width: 110px;">
                                 <div class="d-flex justify-content-end align-items-center gap-2">
-                                    <span class="small text-white-50" data-temp-c="@day.MinTempC" data-temp-f="@day.MinTempF">
+                                    <span class="small text-muted" data-temp-c="@day.MinTempC" data-temp-f="@day.MinTempF">
                                         @day.MinTempC°
                                     </span>
-                                    <div class="temp-bar-bg flex-grow-1" style="width: 50px;">
-                                        <div class="temp-bar-fill" style="width: 75%;"></div>
+                                    <div class="temp-bar-bg-blue flex-grow-1" style="width: 50px;">
+                                        <div class="temp-bar-fill-blue" style="width: 75%;"></div>
                                     </div>
-                                    <span class="fw-bold" data-temp-c="@day.MaxTempC" data-temp-f="@day.MaxTempF">
+                                    <span class="fw-bold text-dark" data-temp-c="@day.MaxTempC" data-temp-f="@day.MaxTempF">
                                         @day.MaxTempC°
                                     </span>
                                 </div>
@@ -254,49 +318,67 @@
                         </div>
                     }
                 </div>
+
+                <!-- Tarjeta Informativa de la Fuente en el sidebar -->
+                <div class="mt-4 p-3 rounded-4 bg-light border">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-info-circle-fill text-primary"></i>
+                        <span class="fw-bold small text-dark">Fuente del Reporte</span>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        @Model.DataSource
+                    </div>
+                    <div class="small text-secondary">
+                        Latitud: <code>@Model.Latitude</code> &bull; Longitud: <code>@Model.Longitude</code>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal Informativo: Arquitectura de Simulación y Migración a API Real -->
-<div class="modal fade" id="archModal" tabindex="-1" aria-labelledby="archModalLabel" aria-hidden="true">
+<!-- Modal: Configuración de API y Fuentes de Datos -->
+<div class="modal fade" id="apiModal" tabindex="-1" aria-labelledby="apiModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content glass-card">
-            <div class="modal-header border-bottom border-white-10">
-                <h5 class="modal-title d-flex align-items-center gap-2" id="archModalLabel">
-                    <i class="bi bi-diagram-3-fill text-info"></i> Arquitectura ClimaSpace
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-bottom bg-light" style="border-top-left-radius: 20px; border-top-right-radius: 20px;">
+                <h5 class="modal-title d-flex align-items-center gap-2 text-primary fw-bold" id="apiModalLabel">
+                    <i class="bi bi-cloud-check-fill"></i> Integración de API &amp; Fuentes Climáticas
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body p-4">
-                <h6 class="fw-bold text-info mb-2"><i class="bi bi-check-circle-fill me-1"></i> Estado Actual: Simulación Procedural</h6>
-                <p class="text-white-75 small">
-                    Los datos meteorológicos actuales son generados por la clase <code>SimulatedWeatherService</code> implementando <code>IWeatherService</code>.
-                    Utiliza curvas matemáticas senoidales para el ciclo de temperatura día/noche, variaciones físicas coherentes (humedad, nubes, viento) y perfiles determinísticos para cualquier ciudad consultada.
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-broadcast text-success me-1"></i> 1. Proveedor Activo: Open-Meteo Live API</h6>
+                <p class="text-secondary small mb-3">
+                    ClimaSpace ahora consulta datos reales en vivo a través de la API abierta de <strong>Open-Meteo</strong>. Realiza geocodificación global por nombre de ciudad y obtiene variables actuales, curvas horarias de 24 horas y pronóstico de 7 días sin requerir ninguna clave de suscripción.
                 </p>
 
-                <h6 class="fw-bold text-warning mt-4 mb-2"><i class="bi bi-arrow-repeat me-1"></i> ¿Cómo pasar a una API Real (OpenWeatherMap, MeteoBlue)?</h6>
-                <p class="text-white-75 small mb-2">
-                    Gracias a la inversión de dependencias (IoC), no tienes que modificar ninguna vista ni ningún controlador. Solo creas la implementación real:
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-radar text-primary me-1"></i> 2. Radar Meteorológico: RainViewer Doppler</h6>
+                <p class="text-secondary small mb-3">
+                    El mapa satelital se alimenta de la API libre de <strong>RainViewer</strong> y mapas <strong>CartoDB</strong> sobre <strong>Leaflet.js</strong>. Proporciona capas de precipitación de radar Doppler animadas cada 10 minutos.
                 </p>
-                <pre class="bg-dark bg-opacity-75 p-3 rounded text-info small mb-3"><code>public class OpenWeatherMapService : IWeatherService
-{
-    private readonly HttpClient _http;
-    public async Task&lt;WeatherReport&gt; GetWeatherReportAsync(string city)
-    {
-        // Llamada a https://api.openweathermap.org/data/2.5/forecast...
-    }
-}</code></pre>
-                <p class="text-white-75 small mb-0">
-                    Y en <code>Program.cs</code> reemplazas una sola línea:
-                    <br/>
-                    <code>builder.Services.AddScoped&lt;IWeatherService, OpenWeatherMapService&gt;();</code>
+
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-code-slash text-primary me-1"></i> 3. Arquitectura Desacoplada (Inversión de Control)</h6>
+                <p class="text-secondary small mb-2">
+                    Si en el futuro deseas utilizar <strong>OpenWeatherMap</strong> u otro proveedor privado, la aplicación implementa el contrato <code>IWeatherService</code>:
                 </p>
+                <pre class="bg-dark text-info p-3 rounded-3 small mb-3"><code>// Solo reemplazas la inyección en Program.cs:
+builder.Services.AddScoped&lt;IWeatherService, OpenWeatherMapService&gt;();</code></pre>
             </div>
-            <div class="modal-footer border-top border-white-10">
-                <button type="button" class="btn btn-outline-light rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
+            <div class="modal-footer border-top bg-light" style="border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;">
+                <button type="button" class="btn btn-primary rounded-pill px-4" data-bs-dismiss="modal">Entendido</button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Inyección de Datos para Inicializar el Radar Leaflet en JavaScript -->
+<script>
+    window.cityCoordinates = {
+        lat: @Model.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        lon: @Model.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        name: "@Html.Raw(Model.City)",
+        temp: @Model.Current.TemperatureC.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        desc: "@Html.Raw(Model.Current.ConditionDescription)"
+    };
+</script>

@@ -15,6 +15,11 @@ public class WeatherReport
 
     public IReadOnlyList<string> PopularCities { get; set; } = [];
 
+    // Metadatos de la fuente de datos (API vs Simulado)
+    public string DataSource { get; set; } = "Simulador Procedural ClimaSpace";
+    public bool IsLiveApi { get; set; } = false;
+    public string Provider { get; set; } = "simulated";
+
     // Helper for CSS styling depending on weather status & day/night
     public string ThemeClass => Current switch
     {

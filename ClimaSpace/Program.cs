@@ -4,9 +4,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
 
-// Weather Service Registration (Easily swappable with a real API service later)
-builder.Services.AddScoped<IWeatherService, SimulatedWeatherService>();
+// Weather Service Registrations
+builder.Services.AddScoped<SimulatedWeatherService>();
+builder.Services.AddScoped<OpenMeteoWeatherService>();
+
+// Default primary provider: Live Open-Meteo API (with automatic fallback to simulation)
+builder.Services.AddScoped<IWeatherService, OpenMeteoWeatherService>();
 
 var app = builder.Build();
 
@@ -14,7 +19,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
