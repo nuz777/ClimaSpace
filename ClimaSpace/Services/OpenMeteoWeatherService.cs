@@ -29,7 +29,13 @@ public class OpenMeteoWeatherService : IWeatherService
 
     public async Task<WeatherReport> GetWeatherReportAsync(string? cityName)
     {
-        cityName = string.IsNullOrWhiteSpace(cityName) ? "Bogotá" : cityName.Trim();
+        cityName = string.IsNullOrWhiteSpace(cityName) ? "Bogotá, Colombia" : cityName.Trim();
+
+        // Si se busca "Colombia" a secas, enfocar en Bogotá, capital de Colombia
+        if (string.Equals(cityName, "Colombia", StringComparison.OrdinalIgnoreCase))
+        {
+            cityName = "Bogotá, Colombia";
+        }
 
         try
         {

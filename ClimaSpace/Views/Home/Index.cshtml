@@ -36,13 +36,15 @@
                 </div>
             </div>
 
-            <!-- Accesos rápidos a ciudades -->
+            <!-- Accesos rápidos a ciudades (Colombia primero) -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-secondary small fw-semibold me-1"><i class="bi bi-geo-alt-fill text-primary me-1"></i>Sugerencias:</span>
+                <span class="badge bg-primary text-white rounded-pill px-3 py-2 small fw-semibold">
+                    🇨🇴 Colombia
+                </span>
                 @foreach (var popularCity in Model.PopularCities)
                 {
                     <a asp-action="Index" asp-route-city="@popularCity" asp-route-provider="@Model.Provider"
-                       class="city-pill-white @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) ? "active" : "")">
+                       class="city-pill-white @(string.Equals(Model.City, popularCity, StringComparison.OrdinalIgnoreCase) || (popularCity == "Bogotá" && Model.City.Contains("Bogot")) ? "active" : "")">
                         @popularCity
                     </a>
                 }
@@ -60,7 +62,9 @@
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <h1 class="h2 fw-bold mb-0 text-white">@Model.City</h1>
-                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">@Model.Country</span>
+                            <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1">
+                                @(Model.Country.Contains("Colombia", StringComparison.OrdinalIgnoreCase) ? "🇨🇴 Colombia" : Model.Country)
+                            </span>
                             <span class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
                                 <i class="bi @(Model.IsLiveApi ? "bi-check-circle-fill" : "bi-gear-wide-connected") me-1"></i>
                                 @(Model.IsLiveApi ? "Datos en Vivo (Open-Meteo)" : "Modo Simulación")

@@ -21,9 +21,9 @@ public class HomeController : Controller
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index(string? city = "Bogotá", string? provider = "live")
+    public async Task<IActionResult> Index(string? city = "Bogotá, Colombia", string? provider = "live")
     {
-        city = string.IsNullOrWhiteSpace(city) ? "Bogotá" : city.Trim();
+        city = string.IsNullOrWhiteSpace(city) ? "Bogotá, Colombia" : city.Trim();
         provider = string.Equals(provider, "simulated", StringComparison.OrdinalIgnoreCase) ? "simulated" : "live";
 
         try

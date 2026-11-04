@@ -20,19 +20,17 @@ public class SimulatedWeatherService : IWeatherService
     {
         ["Bogotá"] = new("Bogotá", "Colombia", "Cundinamarca", 4.7110, -74.0721, -5, 14.5, 5.0, WeatherCondition.LightRain),
         ["Medellín"] = new("Medellín", "Colombia", "Antioquia", 6.2442, -75.5812, -5, 22.0, 4.0, WeatherCondition.PartlyCloudy),
+        ["Cali"] = new("Cali", "Colombia", "Valle del Cauca", 3.4516, -76.5320, -5, 26.0, 5.0, WeatherCondition.PartlyCloudy),
+        ["Barranquilla"] = new("Barranquilla", "Colombia", "Atlántico", 10.9685, -74.7813, -5, 29.0, 4.0, WeatherCondition.Sunny),
+        ["Cartagena"] = new("Cartagena", "Colombia", "Bolívar", 10.3910, -75.4794, -5, 29.5, 3.5, WeatherCondition.Sunny),
+        ["Bucaramanga"] = new("Bucaramanga", "Colombia", "Santander", 7.1254, -73.1198, -5, 23.0, 4.5, WeatherCondition.PartlyCloudy),
         ["Madrid"] = new("Madrid", "España", "Comunidad de Madrid", 40.4168, -3.7038, 1, 18.0, 8.0, WeatherCondition.Sunny),
-        ["Barcelona"] = new("Barcelona", "España", "Cataluña", 41.3879, 2.1699, 1, 20.0, 6.0, WeatherCondition.Sunny),
+        ["Miami"] = new("Miami", "Estados Unidos", "Florida", 25.7617, -80.1918, -5, 27.5, 3.5, WeatherCondition.PartlyCloudy),
+        ["Tokio"] = new("Tokio", "Japón", "Kantō", 35.6762, 139.6503, 9, 16.0, 6.0, WeatherCondition.Sunny),
         ["Buenos Aires"] = new("Buenos Aires", "Argentina", "CABA", -34.6037, -58.3816, -3, 21.0, 7.0, WeatherCondition.PartlyCloudy),
         ["Ciudad de México"] = new("Ciudad de México", "México", "CDMX", 19.4326, -99.1332, -6, 19.0, 6.0, WeatherCondition.PartlyCloudy),
-        ["Miami"] = new("Miami", "Estados Unidos", "Florida", 25.7617, -80.1918, -5, 27.5, 3.5, WeatherCondition.PartlyCloudy),
         ["Nueva York"] = new("Nueva York", "Estados Unidos", "New York", 40.7128, -74.0060, -5, 12.0, 7.0, WeatherCondition.Cloudy),
-        ["Tokio"] = new("Tokio", "Japón", "Kantō", 35.6762, 139.6503, 9, 16.0, 6.0, WeatherCondition.Sunny),
-        ["Londres"] = new("Londres", "Reino Unido", "Greater London", 51.5074, -0.1278, 0, 11.0, 4.0, WeatherCondition.LightRain),
-        ["París"] = new("París", "Francia", "Île-de-France", 48.8566, 2.3522, 1, 14.0, 5.0, WeatherCondition.PartlyCloudy),
-        ["Reikiavik"] = new("Reikiavik", "Islandia", "Höfuðborgarsvæði", 64.1466, -21.9426, 0, 3.0, 4.0, WeatherCondition.Snow),
-        ["Sídney"] = new("Sídney", "Australia", "New South Wales", -33.8688, 151.2093, 11, 22.0, 5.0, WeatherCondition.Sunny),
-        ["Lima"] = new("Lima", "Perú", "Lima Metropolitana", -12.0464, -77.0428, -5, 20.0, 3.0, WeatherCondition.Overcast),
-        ["Santiago"] = new("Santiago", "Chile", "Región Metropolitana", -33.4489, -70.6693, -4, 18.0, 8.0, WeatherCondition.Sunny)
+        ["Londres"] = new("Londres", "Reino Unido", "Greater London", 51.5074, -0.1278, 0, 11.0, 4.0, WeatherCondition.LightRain)
     };
 
     public Task<IReadOnlyList<string>> GetPopularCitiesAsync()
@@ -44,6 +42,13 @@ public class SimulatedWeatherService : IWeatherService
     public Task<WeatherReport> GetWeatherReportAsync(string? cityName)
     {
         cityName = string.IsNullOrWhiteSpace(cityName) ? "Bogotá" : cityName.Trim();
+
+        // Normalizar búsqueda de Colombia
+        if (string.Equals(cityName, "Colombia", StringComparison.OrdinalIgnoreCase) || 
+            cityName.StartsWith("Bogot", StringComparison.OrdinalIgnoreCase))
+        {
+            cityName = "Bogotá";
+        }
 
         CityProfile profile;
         if (!PresetCities.TryGetValue(cityName, out profile!))
@@ -60,7 +65,6 @@ public class SimulatedWeatherService : IWeatherService
         double hourFactor = Math.Sin((hour - 9) * Math.PI / 12.0); // range -1 to 1
         double currentTemp = Math.Round(profile.BaseTemp + (hourFactor * (profile.TempVariance / 2.0)), 1);
 
-        // Deterministic condition based on city and day of the year
         int daySeed = profile.Name.GetHashCode() ^ localTime.DayOfYear;
         var random = new Random(daySeed);
 
@@ -68,7 +72,6 @@ public class SimulatedWeatherService : IWeatherService
         var conditionDesc = GetConditionDescription(currentCondition, isDay);
         var iconClass = GetIconForCondition(currentCondition, isDay);
 
-        // Physical coherence: humidity, UV, wind
         int humidity = currentCondition switch
         {
             WeatherCondition.LightRain or WeatherCondition.HeavyRain => random.Next(78, 96),
@@ -106,8 +109,8 @@ public class SimulatedWeatherService : IWeatherService
             ConditionDescription = conditionDesc,
             IconClass = iconClass,
             IsDay = isDay,
-            Sunrise = "06:12",
-            Sunset = "18:24"
+            Sunrise = "06:05",
+            Sunset = "18:15"
         };
 
         // 24-hour forecast
@@ -199,7 +202,7 @@ public class SimulatedWeatherService : IWeatherService
             Current = currentWeather,
             Hourly = hourlyForecasts,
             Daily = dailyForecasts,
-            PopularCities = PresetCities.Keys.Take(8).ToList()
+            PopularCities = PresetCities.Keys.Take(9).ToList()
         };
 
         return Task.FromResult(report);
@@ -208,11 +211,10 @@ public class SimulatedWeatherService : IWeatherService
     private static CityProfile GenerateDeterministicProfile(string cityName)
     {
         int hash = Math.Abs(cityName.GetHashCode());
-        double lat = Math.Round(((hash % 1400) / 10.0) - 70.0, 4); // -70 to 70
-        double lon = Math.Round(((hash % 3600) / 10.0) - 180.0, 4); // -180 to 180
+        double lat = Math.Round(((hash % 1400) / 10.0) - 70.0, 4);
+        double lon = Math.Round(((hash % 3600) / 10.0) - 180.0, 4);
         int utcOffset = (int)Math.Round(lon / 15.0);
 
-        // Approximate temperature based on latitude
         double latAbs = Math.Abs(lat);
         double baseTemp = Math.Round(30.0 - (latAbs * 0.45), 1);
         if (baseTemp < -5.0) baseTemp = -5.0;
@@ -247,7 +249,6 @@ public class SimulatedWeatherService : IWeatherService
             return WeatherCondition.ClearNight;
         }
 
-        // 75% chance to remain default, 25% chance of variation
         if (random.Next(100) < 75)
         {
             return baseCond;
