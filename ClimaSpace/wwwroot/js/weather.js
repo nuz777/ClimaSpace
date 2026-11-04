@@ -813,53 +813,7 @@ function renderRegionalColombiaEchoes() {
         weight: 2.5
     }).bindTooltip("🟪 <strong>Relámpago del Catatumbo:</strong> Núcleo Púrpura Severo continuo (>55 dBZ - Rayos y Granizo)", { direction: 'top' }).addTo(regionalEchoGroup);
 
-    // 3. Supercélula de Oklahoma / Tornado Alley (Tormenta Púrpura Severa >55 dBZ y Roja 52 dBZ)
-    L.circle([35.4676, -97.5164], {
-        pane: 'dopplerEchoPane',
-        radius: 54000,
-        color: '#059669',
-        fillColor: '#10b981',
-        fillOpacity: 0.40,
-        weight: 2
-    }).addTo(regionalEchoGroup);
-
-    L.circle([35.4676, -97.5164], {
-        pane: 'dopplerEchoPane',
-        radius: 35000,
-        color: '#ca8a04',
-        fillColor: '#eab308',
-        fillOpacity: 0.48,
-        weight: 2
-    }).addTo(regionalEchoGroup);
-
-    L.circle([35.4676, -97.5164], {
-        pane: 'dopplerEchoPane',
-        radius: 22000,
-        color: '#ea580c',
-        fillColor: '#f97316',
-        fillOpacity: 0.60,
-        weight: 2
-    }).addTo(regionalEchoGroup);
-
-    L.circle([35.4676, -97.5164], {
-        pane: 'dopplerEchoPane',
-        radius: 13000,
-        color: '#dc2626',
-        fillColor: '#ef4444',
-        fillOpacity: 0.75,
-        weight: 2
-    }).bindTooltip("🟥 <strong>Oklahoma (Tornado Alley):</strong> Tormenta Convectiva Fuerte (52 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
-
-    L.circle([35.4676, -97.5164], {
-        pane: 'dopplerEchoPane',
-        radius: 6500,
-        color: '#7c3aed',
-        fillColor: '#8b5cf6',
-        fillOpacity: 0.92,
-        weight: 2.5
-    }).bindTooltip("🟪 <strong>Supercélula Oklahoma:</strong> Tormenta Severa con Granizo y Mesociclón (>55 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
-
-    // 4. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
+    // 3. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
     L.circle([10.75, -73.65], {
         pane: 'dopplerEchoPane',
         radius: 38000,
@@ -1054,15 +1008,6 @@ function scanDopplerForSevereStorms() {
             dbz: "62 dBZ",
             hazard: "Tormenta eléctrica severa continua y descargas extremas",
             region: "Cuenca del Catatumbo"
-        },
-        {
-            name: "Frente Convectivo de Oklahoma",
-            lat: 35.4676,
-            lon: -97.5164,
-            type: "purple",
-            dbz: "64 dBZ",
-            hazard: "Supercélula convectiva de Tornado Alley con riesgo de granizo",
-            region: "Oklahoma, EE.UU."
         },
         {
             name: "Frente Convectivo del Chocó",
