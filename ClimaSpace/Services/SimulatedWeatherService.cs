@@ -24,6 +24,10 @@ public class SimulatedWeatherService : IWeatherService
         ["Barranquilla"] = new("Barranquilla", "Colombia", "Atlántico", 10.9685, -74.7813, -5, 29.0, 4.0, WeatherCondition.Sunny),
         ["Cartagena"] = new("Cartagena", "Colombia", "Bolívar", 10.3910, -75.4794, -5, 29.5, 3.5, WeatherCondition.Sunny),
         ["Bucaramanga"] = new("Bucaramanga", "Colombia", "Santander", 7.1254, -73.1198, -5, 23.0, 4.5, WeatherCondition.PartlyCloudy),
+        ["Mississippi"] = new("Mississippi", "Estados Unidos", "Mississippi", 32.2988, -90.1848, -6, 20.0, 6.0, WeatherCondition.PartlyCloudy),
+        ["Oklahoma"] = new("Oklahoma", "Estados Unidos", "Oklahoma", 35.4676, -97.5164, -6, 18.5, 7.0, WeatherCondition.Sunny),
+        ["Kansas"] = new("Kansas", "Estados Unidos", "Kansas", 37.6922, -97.3375, -6, 16.0, 7.5, WeatherCondition.PartlyCloudy),
+        ["Texas"] = new("Texas", "Estados Unidos", "Texas", 29.7604, -95.3698, -6, 23.0, 5.5, WeatherCondition.Sunny),
         ["Madrid"] = new("Madrid", "España", "Comunidad de Madrid", 40.4168, -3.7038, 1, 18.0, 8.0, WeatherCondition.Sunny),
         ["Miami"] = new("Miami", "Estados Unidos", "Florida", 25.7617, -80.1918, -5, 27.5, 3.5, WeatherCondition.PartlyCloudy),
         ["Tokio"] = new("Tokio", "Japón", "Kantō", 35.6762, 139.6503, 9, 16.0, 6.0, WeatherCondition.Sunny),
@@ -43,11 +47,19 @@ public class SimulatedWeatherService : IWeatherService
     {
         cityName = string.IsNullOrWhiteSpace(cityName) ? "Bogotá" : cityName.Trim();
 
-        // Normalizar búsqueda de Colombia
+        // Normalizar búsqueda de Colombia y alias
         if (string.Equals(cityName, "Colombia", StringComparison.OrdinalIgnoreCase) || 
             cityName.StartsWith("Bogot", StringComparison.OrdinalIgnoreCase))
         {
             cityName = "Bogotá";
+        }
+        else if (string.Equals(cityName, "missipi", StringComparison.OrdinalIgnoreCase))
+        {
+            cityName = "Mississippi";
+        }
+        else if (string.Equals(cityName, "olkhahoma", StringComparison.OrdinalIgnoreCase))
+        {
+            cityName = "Oklahoma";
         }
 
         CityProfile profile;

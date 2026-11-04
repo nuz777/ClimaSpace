@@ -38,6 +38,16 @@ public class OpenMeteoWeatherService : IWeatherService
             cityName = "Bogotá, Colombia";
         }
 
+        string queryCity = cityName.ToLowerInvariant().Trim() switch
+        {
+            "colombia" => "Bogotá, Colombia",
+            "missipi" or "mississippi" => "Jackson, Mississippi",
+            "olkhahoma" or "oklahoma" => "Oklahoma City, United States",
+            "kansas" => "Wichita, Kansas",
+            "texas" => "Houston, Texas",
+            _ => cityName
+        };
+
         // Revisar caché en memoria (3 minutos de vigencia para respuestas instantáneas)
         if (Cache.TryGetValue(cityName, out var cached) && DateTime.UtcNow < cached.ExpiresAt)
         {
@@ -47,7 +57,7 @@ public class OpenMeteoWeatherService : IWeatherService
         try
         {
             // 1. Geocodificación: Obtener coordenadas de la ciudad
-            var geocodeUrl = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(cityName)}&count=1&language=es&format=json";
+            var geocodeUrl = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(queryCity)}&count=1&language=es&format=json";
             using var geoResponse = await _httpClient.GetAsync(geocodeUrl);
 
             if (!geoResponse.IsSuccessStatusCode)
@@ -69,6 +79,17 @@ public class OpenMeteoWeatherService : IWeatherService
             string resolvedName = firstResult.GetProperty("name").GetString() ?? cityName;
             string country = firstResult.TryGetProperty("country", out var cProp) ? (cProp.GetString() ?? "") : "";
             string region = firstResult.TryGetProperty("admin1", out var rProp) ? (rProp.GetString() ?? "") : "";
+
+            // Preservar nombres canónicos solicitados por el usuario
+            if (cityName.Equals("Mississippi", StringComparison.OrdinalIgnoreCase) || cityName.Equals("missipi", StringComparison.OrdinalIgnoreCase))
+                resolvedName = "Mississippi";
+            else if (cityName.Equals("Oklahoma", StringComparison.OrdinalIgnoreCase) || cityName.Equals("olkhahoma", StringComparison.OrdinalIgnoreCase))
+                resolvedName = "Oklahoma";
+            else if (cityName.Equals("Kansas", StringComparison.OrdinalIgnoreCase))
+                resolvedName = "Kansas";
+            else if (cityName.Equals("Texas", StringComparison.OrdinalIgnoreCase))
+                resolvedName = "Texas";
+
             double lat = firstResult.GetProperty("latitude").GetDouble();
             double lon = firstResult.GetProperty("longitude").GetDouble();
 
