@@ -316,27 +316,45 @@ main {
     z-index: 1;
 }
 
-/* Efecto de Barrido de Radar (Doppler Sweep Overlay) */
+/* Efecto de Barrido de Radar (Doppler Sweep Overlay) y Detección de Tormentas */
 .radar-sweep-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 340px;
-    height: 340px;
-    margin-top: -170px;
-    margin-left: -170px;
+    width: 380px;
+    height: 380px;
+    margin-top: -190px;
+    margin-left: -190px;
     border-radius: 50%;
-    border: 1px solid rgba(6, 182, 212, 0.35);
-    box-shadow: inset 0 0 25px rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.4);
+    box-shadow: inset 0 0 30px rgba(6, 182, 212, 0.15), 0 0 20px rgba(6, 182, 212, 0.1);
     pointer-events: none;
     z-index: 500;
     display: none;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 .radar-sweep-overlay.active {
     display: block;
 }
 
+/* Anillos concéntricos de alcance Doppler */
+.radar-sweep-overlay::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    margin-top: -100px;
+    margin-left: -100px;
+    border-radius: 50%;
+    border: 1px dashed rgba(6, 182, 212, 0.3);
+    box-sizing: border-box;
+    transition: border-color 0.4s ease;
+}
+
+/* Haz de barrido Doppler rotatorio */
 .radar-sweep-overlay::before {
     content: '';
     position: absolute;
@@ -345,13 +363,167 @@ main {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: conic-gradient(from 0deg at 50% 50%, rgba(6, 182, 212, 0.35) 0deg, rgba(6, 182, 212, 0) 60deg);
-    animation: radar-spin 3s linear infinite;
+    background: conic-gradient(from 0deg at 50% 50%, rgba(6, 182, 212, 0.4) 0deg, rgba(6, 182, 212, 0.05) 50deg, rgba(6, 182, 212, 0) 75deg);
+    animation: radar-spin 2.6s linear infinite;
+    transition: background 0.4s ease;
+}
+
+/* Modo de Barrido: ALERTA ROJA (Tormenta Eléctrica / Lluvia Torrencial) */
+.radar-sweep-overlay.alert-red {
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: inset 0 0 35px rgba(239, 68, 68, 0.25), 0 0 25px rgba(239, 68, 68, 0.2);
+}
+.radar-sweep-overlay.alert-red::after {
+    border-color: rgba(239, 68, 68, 0.45);
+}
+.radar-sweep-overlay.alert-red::before {
+    background: conic-gradient(from 0deg at 50% 50%, rgba(239, 68, 68, 0.55) 0deg, rgba(239, 68, 68, 0.12) 50deg, rgba(239, 68, 68, 0) 80deg);
+}
+
+/* Modo de Barrido: ALERTA PÚRPURA (Tormenta Severa / Granizo / Supercélula) */
+.radar-sweep-overlay.alert-purple {
+    border-color: rgba(168, 85, 247, 0.85);
+    box-shadow: inset 0 0 45px rgba(168, 85, 247, 0.35), 0 0 30px rgba(168, 85, 247, 0.3);
+}
+.radar-sweep-overlay.alert-purple::after {
+    border-color: rgba(168, 85, 247, 0.55);
+}
+.radar-sweep-overlay.alert-purple::before {
+    background: conic-gradient(from 0deg at 50% 50%, rgba(168, 85, 247, 0.6) 0deg, rgba(220, 38, 38, 0.25) 40deg, rgba(168, 85, 247, 0) 85deg);
 }
 
 @keyframes radar-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* Panel HUD Flotante de Detección de Tormentas */
+.radar-detection-hud {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 550;
+    max-width: 320px;
+    background: rgba(15, 23, 42, 0.90);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    padding: 0.65rem 0.9rem;
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    animation: fadeInHud 0.3s ease;
+}
+
+@keyframes fadeInHud {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hud-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.hud-status-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.hud-status-pulse.pulse-cyan {
+    background: #06b6d4;
+    box-shadow: 0 0 8px #06b6d4;
+    animation: hud-blink 1.5s infinite;
+}
+
+.hud-status-pulse.pulse-red {
+    background: #ef4444;
+    box-shadow: 0 0 10px #ef4444;
+    animation: hud-blink 0.8s infinite;
+}
+
+.hud-status-pulse.pulse-purple {
+    background: #a855f7;
+    box-shadow: 0 0 12px #a855f7;
+    animation: hud-blink 0.5s infinite;
+}
+
+@keyframes hud-blink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+.hud-body {
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+/* Indicadores de Blanco/Tormenta Detectada en el Mapa */
+.radar-detect-blip {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.radar-detect-blip .blip-core {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.radar-detect-blip.red .blip-core {
+    background: #ef4444;
+    box-shadow: 0 0 12px #ef4444;
+    border: 2px solid #ffffff;
+}
+
+.radar-detect-blip.purple .blip-core {
+    background: #7c3aed;
+    box-shadow: 0 0 14px #a855f7;
+    border: 2px solid #ffffff;
+}
+
+.radar-detect-blip::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: ping-wave 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.radar-detect-blip.red::after {
+    border: 2px solid #ef4444;
+}
+
+.radar-detect-blip.purple::after {
+    border: 2px solid #a855f7;
+}
+
+@keyframes ping-wave {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2.6); opacity: 0; }
 }
 
 .radar-controls-bar {

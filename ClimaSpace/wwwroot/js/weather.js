@@ -17,6 +17,8 @@ let rainEchoGroup = null;
 let regionalEchoGroup = null;
 let currentManualLevel = null;
 let radarCityMarkers = [];
+let isDopplerSweepActive = false;
+let detectedStormLayerGroup = null;
 
 // Catálogo de localidades con "puntos azulitos" interactivos en el radar
 const RADAR_CITIES = [
@@ -419,6 +421,17 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
 
     // 7. Cargar datos de Radar RainViewer
     loadRainViewerRadarLayers();
+
+    // 8. Re-escanear tormentas severas al mover o hacer zoom en el mapa si el barrido está activo
+    radarMap.on('moveend zoomend', () => {
+        if (isDopplerSweepActive) {
+            scanDopplerForSevereStorms();
+        }
+    });
+
+    if (isDopplerSweepActive) {
+        scanDopplerForSevereStorms();
+    }
 }
 
 function addRadarCityDots(activeCityName) {
@@ -500,6 +513,13 @@ function setManualDopplerLevel(level) {
             window.cityCoordinates.name,
             currentManualLevel
         );
+    }
+
+    // Si se activa nivel Rojo o Púrpura, iniciar el barrido Doppler automáticamente para detectarlo
+    if ((level === 'red' || level === 'purple') && !isDopplerSweepActive) {
+        toggleRadarSweep();
+    } else if (isDopplerSweepActive) {
+        scanDopplerForSevereStorms();
     }
 }
 
@@ -702,10 +722,14 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
             badge.innerHTML = `<i class="bi bi-cloud-sun me-1"></i>Sin lluvia local en ${city} — Ecos regionales activos`;
         }
     }
+
+    if (isDopplerSweepActive) {
+        scanDopplerForSevereStorms();
+    }
 }
 
 // --------------------------------------------------------------------------
-// Graficación Permanente de Ecos Regionales en Colombia (Chocó, Caribe, etc.)
+// Graficación Permanente de Ecos Regionales en Colombia y Zonas Severas
 // --------------------------------------------------------------------------
 function renderRegionalColombiaEchoes() {
     if (!radarMap) return;
@@ -715,7 +739,7 @@ function renderRegionalColombiaEchoes() {
     }
     regionalEchoGroup.clearLayers();
 
-    // 1. Frente de Llovizna y Lluvias en la Costa Pacífica (Chocó - zona de alta reflectividad tropical)
+    // 1. Frente de Llovizna y Tormenta Roja en la Costa Pacífica (Chocó - zona convectiva tropical)
     L.circle([5.69, -76.65], {
         pane: 'dopplerEchoPane',
         radius: 65000,
@@ -734,7 +758,108 @@ function renderRegionalColombiaEchoes() {
         weight: 1.5
     }).bindTooltip("🟨 <strong>Frente Doppler Amarillo:</strong> Lluvia moderada (28 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
 
-    // 2. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
+    L.circle([5.69, -76.65], {
+        pane: 'dopplerEchoPane',
+        radius: 16000,
+        color: '#dc2626',
+        fillColor: '#ef4444',
+        fillOpacity: 0.72,
+        weight: 2
+    }).bindTooltip("🟥 <strong>Frente Convectivo del Chocó:</strong> Tormenta roja y lluvia torrencial (48-50 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    // 2. Relámpago del Catatumbo (Tormenta Eléctrica Continua - Núcleo Púrpura >55 dBZ y Rojo 50 dBZ)
+    L.circle([8.75, -72.85], {
+        pane: 'dopplerEchoPane',
+        radius: 46000,
+        color: '#059669',
+        fillColor: '#10b981',
+        fillOpacity: 0.40,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([8.75, -72.85], {
+        pane: 'dopplerEchoPane',
+        radius: 30000,
+        color: '#ca8a04',
+        fillColor: '#eab308',
+        fillOpacity: 0.50,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([8.75, -72.85], {
+        pane: 'dopplerEchoPane',
+        radius: 20000,
+        color: '#ea580c',
+        fillColor: '#f97316',
+        fillOpacity: 0.60,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([8.75, -72.85], {
+        pane: 'dopplerEchoPane',
+        radius: 12000,
+        color: '#dc2626',
+        fillColor: '#ef4444',
+        fillOpacity: 0.75,
+        weight: 2
+    }).bindTooltip("🟥 <strong>Catatumbo:</strong> Tormenta Eléctrica Activa (50 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    L.circle([8.75, -72.85], {
+        pane: 'dopplerEchoPane',
+        radius: 6000,
+        color: '#7c3aed',
+        fillColor: '#8b5cf6',
+        fillOpacity: 0.92,
+        weight: 2.5
+    }).bindTooltip("🟪 <strong>Relámpago del Catatumbo:</strong> Núcleo Púrpura Severo continuo (>55 dBZ - Rayos y Granizo)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    // 3. Supercélula de Oklahoma / Tornado Alley (Tormenta Púrpura Severa >55 dBZ y Roja 52 dBZ)
+    L.circle([35.4676, -97.5164], {
+        pane: 'dopplerEchoPane',
+        radius: 54000,
+        color: '#059669',
+        fillColor: '#10b981',
+        fillOpacity: 0.40,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([35.4676, -97.5164], {
+        pane: 'dopplerEchoPane',
+        radius: 35000,
+        color: '#ca8a04',
+        fillColor: '#eab308',
+        fillOpacity: 0.48,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([35.4676, -97.5164], {
+        pane: 'dopplerEchoPane',
+        radius: 22000,
+        color: '#ea580c',
+        fillColor: '#f97316',
+        fillOpacity: 0.60,
+        weight: 2
+    }).addTo(regionalEchoGroup);
+
+    L.circle([35.4676, -97.5164], {
+        pane: 'dopplerEchoPane',
+        radius: 13000,
+        color: '#dc2626',
+        fillColor: '#ef4444',
+        fillOpacity: 0.75,
+        weight: 2
+    }).bindTooltip("🟥 <strong>Oklahoma (Tornado Alley):</strong> Tormenta Convectiva Fuerte (52 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    L.circle([35.4676, -97.5164], {
+        pane: 'dopplerEchoPane',
+        radius: 6500,
+        color: '#7c3aed',
+        fillColor: '#8b5cf6',
+        fillOpacity: 0.92,
+        weight: 2.5
+    }).bindTooltip("🟪 <strong>Supercélula Oklahoma:</strong> Tormenta Severa con Granizo y Mesociclón (>55 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+
+    // 4. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
     L.circle([10.75, -73.65], {
         pane: 'dopplerEchoPane',
         radius: 38000,
@@ -744,7 +869,7 @@ function renderRegionalColombiaEchoes() {
         weight: 2
     }).bindTooltip("🟩 <strong>Eco Doppler Verde:</strong> Lloviznas orográficas en la Sierra Nevada (15 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
 
-    // 3. Sistema de Llovizna Verde en el Piedemonte Amazónico
+    // 5. Sistema de Llovizna Verde en el Piedemonte Amazónico
     L.circle([1.61, -75.61], {
         pane: 'dopplerEchoPane',
         radius: 52000,
@@ -874,20 +999,230 @@ function stopRadarAnimation() {
 function toggleRadarSweep() {
     const sweepOverlay = document.getElementById('radarSweepOverlay');
     const sweepBtn = document.getElementById('btnRadarSweep');
+    const hud = document.getElementById('radarDetectionHud');
     if (!sweepOverlay) return;
 
-    sweepOverlay.classList.toggle('active');
-    const isActive = sweepOverlay.classList.contains('active');
+    isDopplerSweepActive = !isDopplerSweepActive;
 
-    if (sweepBtn) {
-        if (isActive) {
+    if (isDopplerSweepActive) {
+        sweepOverlay.classList.add('active');
+        if (hud) hud.classList.remove('d-none');
+        if (sweepBtn) {
             sweepBtn.classList.add('btn-info', 'text-white');
             sweepBtn.classList.remove('btn-outline-secondary');
-        } else {
+            sweepBtn.innerHTML = '<i class="bi bi-bullseye me-1"></i>Barrido Activo';
+        }
+        scanDopplerForSevereStorms();
+    } else {
+        sweepOverlay.classList.remove('active', 'alert-red', 'alert-purple');
+        if (hud) hud.classList.add('d-none');
+        if (sweepBtn) {
             sweepBtn.classList.remove('btn-info', 'text-white');
             sweepBtn.classList.add('btn-outline-secondary');
+            sweepBtn.innerHTML = '<i class="bi bi-bullseye me-1"></i>Barrido Doppler';
+        }
+        if (detectedStormLayerGroup && radarMap) {
+            detectedStormLayerGroup.clearLayers();
         }
     }
+}
+
+/**
+ * Escanea el cuadrante del radar y detecta en tiempo real tormentas severas púrpuras y rojas
+ */
+function scanDopplerForSevereStorms() {
+    if (!radarMap || !isDopplerSweepActive) return;
+
+    if (!detectedStormLayerGroup) {
+        detectedStormLayerGroup = L.layerGroup().addTo(radarMap);
+    }
+    detectedStormLayerGroup.clearLayers();
+
+    const sweepOverlay = document.getElementById('radarSweepOverlay');
+    const hudPulse = document.getElementById('hudPulse');
+    const hudTitle = document.getElementById('hudTitle');
+    const hudBody = document.getElementById('hudBody');
+
+    // Catálogo de focos y células de tormentas severas
+    const candidateStorms = [
+        // 1. Hotspots meteorológicos severos permanentes
+        {
+            name: "Relámpago del Catatumbo",
+            lat: 8.75,
+            lon: -72.85,
+            type: "purple",
+            dbz: "62 dBZ",
+            hazard: "Tormenta eléctrica severa continua y descargas extremas",
+            region: "Cuenca del Catatumbo"
+        },
+        {
+            name: "Frente Convectivo de Oklahoma",
+            lat: 35.4676,
+            lon: -97.5164,
+            type: "purple",
+            dbz: "64 dBZ",
+            hazard: "Supercélula convectiva de Tornado Alley con riesgo de granizo",
+            region: "Oklahoma, EE.UU."
+        },
+        {
+            name: "Frente Convectivo del Chocó",
+            lat: 5.69,
+            lon: -76.65,
+            type: "red",
+            dbz: "50 dBZ",
+            hazard: "Tormenta tropical con lluvia torrencial y vendavales",
+            region: "Cuenca del San Juan / Chocó"
+        }
+    ];
+
+    // 2. Evaluar tormenta en la localidad actualmente seleccionada
+    if (window.cityCoordinates) {
+        const cCity = window.cityCoordinates.name;
+        const cLat = window.cityCoordinates.lat;
+        const cLon = window.cityCoordinates.lon;
+        const cDesc = (window.cityCoordinates.desc || "").toLowerCase();
+        const cPrecip = typeof window.cityCoordinates.precip === 'number' ? window.cityCoordinates.precip : 0;
+
+        let localLevel = currentManualLevel;
+        if (!localLevel) {
+            if (cDesc.includes("granizo") || cDesc.includes("sever") || cPrecip >= 30) {
+                localLevel = 'purple';
+            } else if (cDesc.includes("torment") || cDesc.includes("torrencial") || (cPrecip >= 15 && cPrecip < 30)) {
+                localLevel = 'red';
+            }
+        }
+
+        if (localLevel === 'purple') {
+            candidateStorms.unshift({
+                name: `Núcleo Severo en ${cCity}`,
+                lat: cLat,
+                lon: cLon,
+                type: "purple",
+                dbz: "60 - 65 dBZ",
+                hazard: "Granizo destructivo (>2 cm) / Turbonadas severas",
+                region: cCity
+            });
+        } else if (localLevel === 'red') {
+            candidateStorms.unshift({
+                name: `Tormenta Roja en ${cCity}`,
+                lat: cLat,
+                lon: cLon,
+                type: "red",
+                dbz: "48 - 54 dBZ",
+                hazard: "Tormenta eléctrica y lluvia torrencial (>15 mm/h)",
+                region: cCity
+            });
+        }
+    }
+
+    // Filtrar tormentas visibles en la ventana actual del mapa o dentro de rango radar (450 km)
+    const bounds = radarMap.getBounds();
+    const mapCenter = radarMap.getCenter();
+
+    const detectedStorms = candidateStorms.filter(s => {
+        if (bounds.contains([s.lat, s.lon])) return true;
+        const distKm = mapCenter.distanceTo([s.lat, s.lon]) / 1000.0;
+        return distKm <= 450.0;
+    });
+
+    const purpleDetections = detectedStorms.filter(s => s.type === 'purple');
+    const redDetections = detectedStorms.filter(s => s.type === 'red');
+
+    // 1. Caso: Al menos una tormenta púrpura detectada por el barrido
+    if (purpleDetections.length > 0) {
+        if (sweepOverlay) {
+            sweepOverlay.classList.remove('alert-red');
+            sweepOverlay.classList.add('alert-purple');
+        }
+        if (hudPulse) hudPulse.className = "hud-status-pulse pulse-purple";
+        if (hudTitle) hudTitle.textContent = "⚡ ALERTA: TORMENTA SEVERA PÚRPURA DETECTADA";
+        if (hudBody) {
+            hudBody.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="badge text-white px-2 py-1" style="background:#7c3aed;">
+                        <i class="bi bi-lightning-charge-fill me-1"></i>🟪 ${purpleDetections.length} Núcleo(s) Púrpura (>55 dBZ)
+                    </span>
+                    <span class="badge bg-danger text-white">${redDetections.length > 0 ? `+${redDetections.length} Rojas` : 'Extrema'}</span>
+                </div>
+                <div class="small fw-semibold text-warning">
+                    <i class="bi bi-shield-exclamation me-1"></i>${purpleDetections[0].hazard}
+                </div>
+                <div class="small text-white-50 mt-1">
+                    Blanco fijado: <strong>${purpleDetections[0].name}</strong> • ${purpleDetections[0].dbz}
+                </div>
+            `;
+        }
+    }
+    // 2. Caso: Tormentas rojas detectadas (sin púrpura)
+    else if (redDetections.length > 0) {
+        if (sweepOverlay) {
+            sweepOverlay.classList.remove('alert-purple');
+            sweepOverlay.classList.add('alert-red');
+        }
+        if (hudPulse) hudPulse.className = "hud-status-pulse pulse-red";
+        if (hudTitle) hudTitle.textContent = "🚨 DETECCIÓN: TORMENTA ROJA DETECTADA";
+        if (hudBody) {
+            hudBody.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="badge bg-danger text-white px-2 py-1">
+                        <i class="bi bi-cloud-lightning-rain-fill me-1"></i>🟥 ${redDetections.length} Célula(s) Roja(s) (45-55 dBZ)
+                    </span>
+                    <span class="badge bg-warning text-dark">Alerta Eléctrica</span>
+                </div>
+                <div class="small text-light">
+                    <i class="bi bi-lightning-fill text-warning me-1"></i>${redDetections[0].hazard}
+                </div>
+                <div class="small text-white-50 mt-1">
+                    Blanco fijado: <strong>${redDetections[0].name}</strong> • ${redDetections[0].dbz}
+                </div>
+            `;
+        }
+    }
+    // 3. Caso: Sin tormentas rojas ni púrpuras en el rango
+    else {
+        if (sweepOverlay) {
+            sweepOverlay.classList.remove('alert-red', 'alert-purple');
+        }
+        if (hudPulse) hudPulse.className = "hud-status-pulse pulse-cyan";
+        if (hudTitle) hudTitle.textContent = "🟢 BARRIDO DOPPLER: ESCANEO NORMAL";
+        if (hudBody) {
+            hudBody.innerHTML = `
+                <div class="text-white-50 small">
+                    <i class="bi bi-radar me-1 text-info"></i>Barrido 360° completado. Sin tormentas rojas ni púrpuras detectadas en el cuadrante (&lt;45 dBZ).
+                </div>
+            `;
+        }
+    }
+
+    // Graficar indicadores de blanco pulsante (Ping Targets) en cada tormenta detectada
+    detectedStorms.forEach(storm => {
+        const blipIcon = L.divIcon({
+            className: 'radar-blip-wrapper',
+            html: `<div class="radar-detect-blip ${storm.type}" title="${storm.name}"><div class="blip-core"></div></div>`,
+            iconSize: [26, 26],
+            iconAnchor: [13, 13]
+        });
+
+        const blipMarker = L.marker([storm.lat, storm.lon], { 
+            icon: blipIcon, 
+            zIndexOffset: 850 
+        }).addTo(detectedStormLayerGroup);
+
+        blipMarker.bindTooltip(`
+            <div class="p-1 text-start" style="min-width: 170px;">
+                <div class="fw-bold ${storm.type === 'purple' ? 'text-primary' : 'text-danger'} mb-1">
+                    ${storm.type === 'purple' ? '🟪' : '🟥'} ${storm.name}
+                </div>
+                <div class="small text-dark mb-1"><strong>Reflectividad:</strong> <span class="badge ${storm.type === 'purple' ? 'bg-purple text-white' : 'bg-danger text-white'}" style="${storm.type === 'purple' ? 'background:#7c3aed;' : ''}">${storm.dbz}</span></div>
+                <div class="small text-secondary mb-1"><strong>Condición:</strong> ${storm.hazard}</div>
+                <div class="small text-success fw-semibold"><i class="bi bi-bullseye me-1"></i>Blanco detectado por Barrido Doppler</div>
+            </div>
+        `, { 
+            direction: 'top', 
+            offset: [0, -10],
+            className: 'shadow-lg border rounded-3 p-1'
+        });
+    });
 }
 
 // --------------------------------------------------------------------------

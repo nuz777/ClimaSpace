@@ -88,6 +88,16 @@
                     <div id="weatherRadarMap"></div>
                     <!-- Overlay de Barrido Giratorio -->
                     <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
+                    <!-- HUD de Detección de Tormentas Severas del Barrido Doppler -->
+                    <div class="radar-detection-hud d-none" id="radarDetectionHud">
+                        <div class="hud-header">
+                            <span class="hud-status-pulse pulse-cyan" id="hudPulse"></span>
+                            <span class="hud-title" id="hudTitle">BARRIDO DOPPLER ACTIVO</span>
+                        </div>
+                        <div class="hud-body" id="hudBody">
+                            <div class="small text-white-50">Escaneando reflectividad Doppler en 360°...</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Barra de Controles del Radar -->
