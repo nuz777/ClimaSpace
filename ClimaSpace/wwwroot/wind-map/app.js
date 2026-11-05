@@ -465,13 +465,8 @@
       attributionControl: false
     });
 
-    // Definición de capas base (CARTO Dark prioritario con fallback transparente)
+    // Definición de capas base (Esri Dark Gray por defecto)
     const baseLayers = {
-      'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19,
-        tileSize: 256
-      }),
       'esri-dark': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 18,
         tileSize: 256
@@ -486,20 +481,8 @@
       })
     };
 
-    let activeLayer = baseLayers['carto-dark'].addTo(map);
+    let activeLayer = baseLayers['esri-dark'].addTo(map);
 
-    // Si algún tile de Carto tiene problema, conmuta transparentemente a Esri Dark
-    let cartoErrorCount = 0;
-    baseLayers['carto-dark'].on('tileerror', function () {
-      cartoErrorCount++;
-      if (cartoErrorCount > 4 && map.hasLayer(baseLayers['carto-dark'])) {
-        console.warn('Fallback automático de CARTO Dark a Esri Dark Gray');
-        map.removeLayer(baseLayers['carto-dark']);
-        activeLayer = baseLayers['esri-dark'].addTo(map);
-      }
-    });
-
-    // Corrección crítica: InvalidateSize para garantizar que los tiles de CARTO se dibujen
     map.invalidateSize();
     setTimeout(() => map.invalidateSize(), 100);
     setTimeout(() => map.invalidateSize(), 350);
