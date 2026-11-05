@@ -40,79 +40,117 @@ public class WindService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Lista de huracanes y ciclones tropicales seguidos por el sistema
-    /// </summary>
-    public static readonly IReadOnlyList<TrackedHurricane> ActiveHurricanes = new List<TrackedHurricane>
-    {
-        new(
-            Id: "isaias",
-            Name: "Huracán Isaias",
-            Category: "Cat. 1",
-            CategoryLevel: 1,
-            Latitude: 27.5,
-            Longitude: -80.2,
-            MaxWindsKmh: 130,
-            PressureHpa: 987,
-            LocationDesc: "Costa del Golfo / Florida y Misisipi",
-            Movement: "NNO a 18 km/h",
-            Status: "Monitoreado en vivo"
-        ),
-        new(
-            Id: "milton",
-            Name: "Huracán Milton",
-            Category: "Cat. 5",
-            CategoryLevel: 5,
-            Latitude: 24.2,
-            Longitude: -86.5,
-            MaxWindsKmh: 285,
-            PressureHpa: 897,
-            LocationDesc: "Golfo de México (Frente a Península de Florida)",
-            Movement: "ENE a 22 km/h",
-            Status: "Ciclón Mayor Extremo"
-        ),
-        new(
-            Id: "helene",
-            Name: "Huracán Helene",
-            Category: "Cat. 4",
-            CategoryLevel: 4,
-            Latitude: 28.5,
-            Longitude: -84.5,
-            MaxWindsKmh: 225,
-            PressureHpa: 938,
-            LocationDesc: "Golfo de México Norte / Big Bend",
-            Movement: "NNE a 32 km/h",
-            Status: "Ciclón Mayor"
-        ),
-        new(
-            Id: "beryl",
-            Name: "Huracán Beryl",
-            Category: "Cat. 5",
-            CategoryLevel: 5,
-            Latitude: 18.2,
-            Longitude: -77.5,
-            MaxWindsKmh: 260,
-            PressureHpa: 934,
-            LocationDesc: "Mar Caribe (Frente a Jamaica y Península de Yucatán)",
-            Movement: "ONO a 26 km/h",
-            Status: "Ciclón Tropical Histórico"
-        ),
-        new(
-            Id: "shanshan",
-            Name: "Tifón Shanshan",
-            Category: "Cat. 3",
-            CategoryLevel: 3,
-            Latitude: 31.8,
-            Longitude: 130.5,
-            MaxWindsKmh: 185,
-            PressureHpa: 950,
-            LocationDesc: "Pacífico Noroeste / Sudoeste de Japón (Kyushu)",
-            Movement: "NE a 15 km/h",
-            Status: "Tifón Muy Fuerte"
-        )
-    };
+    private static (List<TrackedHurricane> Hurricanes, DateTime ExpiresAt)? _hurricanesCache;
+    private static readonly object _hurricanesLock = new();
 
-    public IReadOnlyList<TrackedHurricane> GetHurricanes() => ActiveHurricanes;
+    /// <summary>
+    /// Consulta en tiempo real los huracanes y ciclones tropicales activos
+    /// directamente desde los servicios oficiales de NOAA y el National Hurricane Center (NHC).
+    /// Si no hay ciclones activos en la cuenca, retorna una lista vacía (sin datos simulados).
+    /// </summary>
+    public async Task<IReadOnlyList<TrackedHurricane>> GetActiveHurricanesAsync()
+    {
+        lock (_hurricanesLock)
+        {
+            if (_hurricanesCache.HasValue && DateTime.UtcNow < _hurricanesCache.Value.ExpiresAt)
+            {
+                return _hurricanesCache.Value.Hurricanes;
+            }
+        }
+
+        var liveHurricanes = new List<TrackedHurricane>();
+
+        try
+        {
+            // Endpoint público operacional de NOAA / Esri Disaster Response para ciclones activos (NHC / JTWC)
+            string noaaUrl = "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/Active_Hurricanes_v1/FeatureServer/0/query?where=1%3D1&outFields=*&f=json";
+            using var response = await _httpClient.GetAsync(noaaUrl);
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonStr = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(jsonStr);
+                if (doc.RootElement.TryGetProperty("features", out var features) && features.ValueKind == JsonValueKind.Array)
+                {
+                    var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var f in features.EnumerateArray())
+                    {
+                        if (!f.TryGetProperty("attributes", out var attr)) continue;
+
+                        string stormName = attr.TryGetProperty("STORMNAME", out var sn) ? sn.GetString() ?? "" : "";
+                        if (string.IsNullOrWhiteSpace(stormName) || seenNames.Contains(stormName)) continue;
+
+                        double tau = attr.TryGetProperty("TAU", out var tProp) ? tProp.GetDouble() : 0;
+                        if (tau > 0) continue; // Solo nos interesa la posición actual observada (TAU = 0)
+
+                        double lat = attr.TryGetProperty("LAT", out var latP) ? latP.GetDouble() : 0;
+                        double lon = attr.TryGetProperty("LON", out var lonP) ? lonP.GetDouble() : 0;
+                        double maxWindKnots = attr.TryGetProperty("MAXWIND", out var mwP) ? mwP.GetDouble() : 0;
+                        double mslp = attr.TryGetProperty("MSLP", out var mslpP) ? mslpP.GetDouble() : 0;
+                        double ssnum = attr.TryGetProperty("SSNUM", out var ssP) ? ssP.GetDouble() : 0;
+                        double tcDir = attr.TryGetProperty("TCDIR", out var tcdP) ? tcdP.GetDouble() : 0;
+                        double tcSpdKnots = attr.TryGetProperty("TCSPD", out var tcsP) ? tcsP.GetDouble() : 0;
+                        string basin = attr.TryGetProperty("BASIN", out var bP) ? bP.GetString() ?? "" : "";
+                        string stormType = attr.TryGetProperty("STORMTYPE", out var stP) ? stP.GetString() ?? "" : "";
+
+                        seenNames.Add(stormName);
+
+                        double maxWindsKmh = Math.Round(maxWindKnots * 1.852);
+                        int categoryLevel = (int)Math.Max(0, Math.Min(5, ssnum));
+                        string category = categoryLevel > 0 ? $"Cat. {categoryLevel}" : (string.IsNullOrWhiteSpace(stormType) ? "Tormenta Tropical" : stormType.Trim());
+
+                        string nameTitle = stormName.StartsWith("Huracán", StringComparison.OrdinalIgnoreCase) ||
+                                           stormName.StartsWith("Tifón", StringComparison.OrdinalIgnoreCase) ||
+                                           stormName.StartsWith("Tormenta", StringComparison.OrdinalIgnoreCase)
+                                           ? stormName
+                                           : (categoryLevel >= 1 ? $"Huracán {stormName}" : $"Tormenta {stormName}");
+
+                        string basinDesc = basin switch
+                        {
+                            "AL" => "Cuenca del Atlántico",
+                            "EP" => "Pacífico Nororiental",
+                            "CP" => "Pacífico Central",
+                            "WP" => "Pacífico Noroccidental",
+                            "IO" => "Océano Índico",
+                            "SH" => "Hemisferio Sur",
+                            _ => "Océano Global"
+                        };
+
+                        string movement = (tcSpdKnots > 0 && tcSpdKnots < 200)
+                            ? $"{tcDir:F0}° a {tcSpdKnots * 1.852:F0} km/h"
+                            : "Estacionario o en monitoreo";
+
+                        liveHurricanes.Add(new TrackedHurricane(
+                            Id: stormName.ToLowerInvariant().Replace(" ", "-"),
+                            Name: nameTitle,
+                            Category: category,
+                            CategoryLevel: categoryLevel,
+                            Latitude: lat,
+                            Longitude: lon,
+                            MaxWindsKmh: maxWindsKmh,
+                            PressureHpa: (mslp > 800 && mslp < 1050) ? mslp : 1000,
+                            LocationDesc: $"{basinDesc} ({Math.Abs(lat):F1}° {(lat >= 0 ? "N" : "S")}, {Math.Abs(lon):F1}° {(lon >= 0 ? "E" : "O")})",
+                            Movement: movement,
+                            Status: "Datos Oficiales NOAA / NHC en Vivo"
+                        ));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "No se pudo consultar el feed en vivo de NOAA para huracanes.");
+        }
+
+        lock (_hurricanesLock)
+        {
+            _hurricanesCache = (liveHurricanes, DateTime.UtcNow.AddMinutes(15));
+        }
+
+        return liveHurricanes;
+    }
+
+    public async Task<IReadOnlyList<TrackedHurricane>> GetHurricanesAsync() => await GetActiveHurricanesAsync();
 
     /// <summary>
     /// Identifica de forma inmediata o enriquecida el nombre del lugar (ciudad o cuerpo de agua)

@@ -112,9 +112,9 @@ public class HomeController : Controller
     }
 
     [HttpGet]
-    public IActionResult GetHurricanes()
+    public async Task<IActionResult> GetHurricanes()
     {
-        var list = _windService.GetHurricanes();
+        var list = await _windService.GetActiveHurricanesAsync();
         return Json(list);
     }
 

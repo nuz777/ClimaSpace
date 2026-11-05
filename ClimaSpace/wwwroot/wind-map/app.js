@@ -48,74 +48,8 @@
     ]
   };
 
-  // Base de datos de huracanes locales y sincronización con el backend C#
-  let trackedHurricanes = [
-    {
-      id: "isaias",
-      name: "Huracán Isaias",
-      category: "Cat. 1",
-      categoryLevel: 1,
-      latitude: 27.5,
-      longitude: -80.2,
-      maxWindsKmh: 130,
-      pressureHpa: 987,
-      locationDesc: "Costa del Golfo / Florida y Misisipi",
-      movement: "NNO a 18 km/h",
-      status: "Monitoreado en vivo"
-    },
-    {
-      id: "milton",
-      name: "Huracán Milton",
-      category: "Cat. 5",
-      categoryLevel: 5,
-      latitude: 24.2,
-      longitude: -86.5,
-      maxWindsKmh: 285,
-      pressureHpa: 897,
-      locationDesc: "Golfo de México (Frente a Península de Florida)",
-      movement: "ENE a 22 km/h",
-      status: "Ciclón Mayor Extremo"
-    },
-    {
-      id: "helene",
-      name: "Huracán Helene",
-      category: "Cat. 4",
-      categoryLevel: 4,
-      latitude: 28.5,
-      longitude: -84.5,
-      maxWindsKmh: 225,
-      pressureHpa: 938,
-      locationDesc: "Golfo de México Norte / Big Bend",
-      movement: "NNE a 32 km/h",
-      status: "Ciclón Mayor"
-    },
-    {
-      id: "beryl",
-      name: "Huracán Beryl",
-      category: "Cat. 5",
-      categoryLevel: 5,
-      latitude: 18.2,
-      longitude: -77.5,
-      maxWindsKmh: 260,
-      pressureHpa: 934,
-      locationDesc: "Mar Caribe (Jamaica / Península de Yucatán)",
-      movement: "ONO a 26 km/h",
-      status: "Ciclón Tropical Histórico"
-    },
-    {
-      id: "shanshan",
-      name: "Tifón Shanshan",
-      category: "Cat. 3",
-      categoryLevel: 3,
-      latitude: 31.8,
-      longitude: 130.5,
-      maxWindsKmh: 185,
-      pressureHpa: 950,
-      locationDesc: "Pacífico Noroeste / Sudoeste de Japón (Kyushu)",
-      movement: "NE a 15 km/h",
-      status: "Tifón Muy Fuerte"
-    }
-  ];
+  // Lista de huracanes activos sincronizada en vivo con NOAA / NHC
+  let trackedHurricanes = [];
 
   class WmMath {
     static normalizeLng(lng) {
@@ -276,34 +210,9 @@
       const v01 = this.getVec(r1, c0, hourIndex, lat, lng);
       const v11 = this.getVec(r1, c1, hourIndex, lat, lng);
 
-      let u = WmMath.lerp(WmMath.lerp(v00.u, v10.u, fx), WmMath.lerp(v01.u, v11.u, fx), fy);
-      let v = WmMath.lerp(WmMath.lerp(v00.v, v10.v, fx), WmMath.lerp(v01.v, v11.v, fx), fy);
-
-      // Inyección de Vórtice Ciclónico Físico para los Huracanes Activos
-      for (const h of trackedHurricanes) {
-        const dKm = WmMath.distanceKm(lat, lng, h.latitude, h.longitude);
-        if (dKm < 550) {
-          const dlat = (lat - h.latitude) * 111.0;
-          const dlon = (lng - h.longitude) * 111.0 * Math.cos(h.latitude * Math.PI / 180);
-          const alpha = Math.atan2(dlat, dlon);
-          // Giro ciclónico antihorario (Hemisferio Norte) con ángulo de espiral hacia el ojo
-          const spiralAngle = alpha + Math.PI / 2 - 0.32;
-          const rMax = 38.0;
-          let vt = 0;
-          if (dKm < rMax) {
-            vt = h.maxWindsKmh * (dKm / rMax);
-          } else {
-            vt = h.maxWindsKmh * Math.pow(rMax / dKm, 0.55) * Math.exp(-Math.pow((dKm - rMax) / 380, 1.25));
-          }
-          const hu = vt * Math.cos(spiralAngle);
-          const hv = vt * Math.sin(spiralAngle);
-          
-          // Mezclar el vórtice del huracán con el viento de fondo
-          const weight = Math.min(1.0, Math.max(0.0, 1.0 - (dKm / 550)));
-          u = u * (1 - weight) + hu * weight;
-          v = v * (1 - weight) + hv * weight;
-        }
-      }
+      // Interpolación bilineal directa del campo de viento real (sin vórtices artificiales)
+      const u = WmMath.lerp(WmMath.lerp(v00.u, v10.u, fx), WmMath.lerp(v01.u, v11.u, fx), fy);
+      const v = WmMath.lerp(WmMath.lerp(v00.v, v10.v, fx), WmMath.lerp(v01.v, v11.v, fx), fy);
 
       const polar = WmMath.vectorToPolar(u, v);
       return {
@@ -671,11 +580,30 @@
       });
     }
 
-    // Poblar el menú desplegable de Huracanes
+    // Poblar el menú desplegable de Huracanes con datos reales de NOAA
     function populateHurricanesPanel(hurricanes) {
       const listContainer = document.getElementById('windHurricanesList');
+      const badge = document.getElementById('windHurricaneCountBadge');
+      if (badge) {
+        badge.textContent = hurricanes.length;
+        badge.className = hurricanes.length > 0 ? "badge bg-danger rounded-pill" : "badge bg-secondary rounded-pill";
+      }
+
       if (!listContainer) return;
       listContainer.innerHTML = '';
+
+      if (!hurricanes || hurricanes.length === 0) {
+        listContainer.innerHTML = `
+          <div class="p-3 text-center text-white-50">
+            <i class="bi bi-shield-check text-success fs-3 d-block mb-2"></i>
+            <div class="fw-bold text-white small mb-1">Sin Huracanes Activos</div>
+            <div style="font-size: 0.75rem; line-height: 1.35;">
+              Datos oficiales en vivo del Centro Nacional de Huracanes (NHC / NOAA): No hay ciclones tropicales ni huracanes activos actualmente.
+            </div>
+          </div>
+        `;
+        return;
+      }
 
       hurricanes.forEach((h) => {
         const card = document.createElement('div');
@@ -706,18 +634,19 @@
       });
     }
 
-    // Cargar huracanes desde el backend C# o lista inicial
+    // Cargar huracanes reales en vivo desde el backend C# (NOAA NHC)
     async function loadHurricanes() {
       try {
         const res = await fetch('/Home/GetHurricanes');
         if (res.ok) {
           const list = await res.json();
-          if (Array.isArray(list) && list.length > 0) {
-            trackedHurricanes = list;
-          }
+          trackedHurricanes = Array.isArray(list) ? list : [];
+        } else {
+          trackedHurricanes = [];
         }
       } catch (e) {
-        console.warn('Uso de lista local de huracanes:', e);
+        console.warn('Error consultando huracanes en vivo:', e);
+        trackedHurricanes = [];
       }
       renderHurricanesOnMap(trackedHurricanes);
       populateHurricanesPanel(trackedHurricanes);

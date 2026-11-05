@@ -885,7 +885,7 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
     else {
         if (badge) {
             badge.className = "badge bg-light text-secondary border rounded-pill px-3 py-1 small";
-            badge.innerHTML = `<i class="bi bi-cloud-sun me-1"></i>Sin lluvia local en ${city} — Ecos regionales activos`;
+            badge.innerHTML = `<i class="bi bi-cloud-sun me-1"></i>Sin precipitación en ${city} (0.0 mm/h — Despejado)`;
         }
         localEchoCells = [];
     }
@@ -930,11 +930,7 @@ const REGIONAL_DOPPLER_SYSTEMS = [
     { name: "Piedemonte Llanero / Villavicencio", baseLat: 4.20, baseLon: -73.45, levels: ['green', 'yellow', 'orange'], baseRadius: 40000, phase: 2, lifeFrames: 8, driftLat: 0.008, driftLon: 0.012 },
     { name: "Llanos del Meta & Casanare (Sabana)", baseLat: 5.30, baseLon: -71.80, levels: ['green', 'yellow'], baseRadius: 44000, phase: 7, lifeFrames: 8, driftLat: 0.010, driftLon: 0.015 },
     { name: "Cuenca Amazónica / Caquetá & Putumayo", baseLat: 1.50, baseLon: -75.35, levels: ['green', 'yellow', 'orange'], baseRadius: 50000, phase: 5, lifeFrames: 9, driftLat: 0.008, driftLon: 0.010 },
-    { name: "Trapecio Amazónico / Leticia & Amazonas", baseLat: -4.10, baseLon: -69.95, levels: ['green', 'yellow'], baseRadius: 38000, phase: 9, lifeFrames: 7, driftLat: 0.008, driftLon: 0.010 },
-
-    // 5. Costas del Golfo e Internacionales
-    { name: "Mississippi / Costa del Golfo", baseLat: 31.50, baseLon: -89.80, levels: ['green', 'yellow', 'orange'], baseRadius: 44000, phase: 1, lifeFrames: 8, driftLat: 0.015, driftLon: 0.010 },
-    { name: "Texas / Frente de la Costa de Houston", baseLat: 29.40, baseLon: -94.90, levels: ['green', 'yellow'], baseRadius: 42000, phase: 5, lifeFrames: 8, driftLat: 0.012, driftLon: 0.015 }
+    { name: "Trapecio Amazónico / Leticia & Amazonas", baseLat: -4.10, baseLon: -69.95, levels: ['green', 'yellow'], baseRadius: 38000, phase: 9, lifeFrames: 7, driftLat: 0.008, driftLon: 0.010 }
 ];
 
 /**
@@ -1242,28 +1238,8 @@ function scanDopplerForSevereStorms() {
     const hudTitle = document.getElementById('hudTitle');
     const hudBody = document.getElementById('hudBody');
 
-    // Catálogo de focos y células de tormentas severas
-    const candidateStorms = [
-        // 1. Hotspots meteorológicos severos permanentes
-        {
-            name: "Relámpago del Catatumbo",
-            lat: 8.75,
-            lon: -72.85,
-            type: "purple",
-            dbz: "62 dBZ",
-            hazard: "Tormenta eléctrica severa continua y descargas extremas",
-            region: "Cuenca del Catatumbo"
-        },
-        {
-            name: "Frente Convectivo del Chocó",
-            lat: 5.69,
-            lon: -76.65,
-            type: "red",
-            dbz: "50 dBZ",
-            hazard: "Tormenta tropical con lluvia torrencial y vendavales",
-            region: "Cuenca del San Juan / Chocó"
-        }
-    ];
+    // Evaluación de tormentas severas exclusivamente basada en observaciones en vivo
+    const candidateStorms = [];
 
     // 2. Evaluar tormenta en la localidad actualmente seleccionada
     if (window.cityCoordinates) {
