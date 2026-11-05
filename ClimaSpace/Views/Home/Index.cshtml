@@ -94,6 +94,8 @@
                 <!-- Visor del Mapa Leaflet -->
                 <div class="radar-map-wrapper">
                     <div id="weatherRadarMap"></div>
+                    <!-- Lienzo Canvas de Alta Fidelidad para Ecos Doppler (IDW + Simplex Noise) -->
+                    <canvas id="dopplerRadarCanvas" class="doppler-radar-canvas"></canvas>
                     <!-- Botón Flotante Pantalla Completa Directo -->
                     <button type="button" class="radar-floating-btn shadow-sm" id="btnFloatingFullscreen" onclick="toggleRadarFullscreen()" title="Pantalla Completa">
                         <i class="bi bi-arrows-fullscreen" id="floatingFullscreenIcon"></i>

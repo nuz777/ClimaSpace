@@ -21,6 +21,218 @@ let radarCityMarkers = [];
 let isDopplerSweepActive = false;
 let detectedStormLayerGroup = null;
 
+// ==========================================================================
+// Motor de Renderizado Visual de Lluvia Doppler (IDW + Simplex Noise en Canvas)
+// ==========================================================================
+let dopplerCanvas = null;
+let dopplerCtx = null;
+let dopplerOffscreenCanvas = null;
+let dopplerOffscreenCtx = null;
+let localEchoCells = [];
+let regionalEchoCells = [];
+
+// Generador de Ruido Simplex 2D para contornos orgánicos no circulares
+const DopplerSimplex = (function () {
+    const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
+    const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+    const p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) p[i] = (i * 37 + 11) % 256;
+    const perm = new Uint8Array(512);
+    const gradP = new Array(512);
+    const grad2 = [[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let i = 0; i < 512; i++) {
+        perm[i] = p[i & 255];
+        gradP[i] = grad2[perm[i] % 8];
+    }
+    return {
+        noise2D: function (xin, yin) {
+            const s = (xin + yin) * F2;
+            const i = Math.floor(xin + s), j = Math.floor(yin + s);
+            const t = (i + j) * G2;
+            const x0 = xin - (i - t), y0 = yin - (j - t);
+            let i1 = (x0 > y0) ? 1 : 0, j1 = (x0 > y0) ? 0 : 1;
+            const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+            const x2 = x0 - 1.0 + 2.0 * G2, y2 = y0 - 1.0 + 2.0 * G2;
+            const ii = i & 255, jj = j & 255;
+            const g0 = gradP[ii + perm[jj]];
+            const g1 = gradP[ii + i1 + perm[jj + j1]];
+            const g2 = gradP[ii + 1 + perm[jj + 1]];
+            let t0 = 0.5 - x0 * x0 - y0 * y0;
+            const n0 = t0 < 0 ? 0 : (t0 *= t0, t0 * t0 * (g0[0] * x0 + g0[1] * y0));
+            let t1 = 0.5 - x1 * x1 - y1 * y1;
+            const n1 = t1 < 0 ? 0 : (t1 *= t1, t1 * t1 * (g1[0] * x1 + g1[1] * y1));
+            let t2 = 0.5 - x2 * x2 - y2 * y2;
+            const n2 = t2 < 0 ? 0 : (t2 *= t2, t2 * t2 * (g2[0] * x2 + g2[1] * y2));
+            return 70.0 * (n0 + n1 + n2);
+        }
+    };
+})();
+
+// Tabla de Consulta (LUT) cromática continua de dBZ: Verde -> Amarillo -> Naranja -> Rojo -> Morado (>55 dBZ)
+const DOPPLER_LUT = (function () {
+    const lut = new Uint8ClampedArray(76 * 4);
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    const stops = [
+        { dbz: 10, r: 16, g: 185, b: 129, a: 0 },
+        { dbz: 16, r: 16, g: 185, b: 129, a: 160 },
+        { dbz: 25, r: 34, g: 197, b: 94,  a: 200 },
+        { dbz: 32, r: 234, g: 179, b: 8,  a: 220 },
+        { dbz: 40, r: 249, g: 115, b: 22, a: 235 },
+        { dbz: 48, r: 239, g: 68,  b: 68, a: 245 },
+        { dbz: 55, r: 220, g: 38,  b: 38, a: 250 },
+        { dbz: 60, r: 168, g: 85,  b: 247, a: 255 },
+        { dbz: 75, r: 124, g: 58,  b: 237, a: 255 }
+    ];
+    for (let v = 0; v <= 75; v++) {
+        let r = 0, g = 0, b = 0, a = 0;
+        if (v >= stops[0].dbz) {
+            for (let i = 0; i < stops.length - 1; i++) {
+                const s0 = stops[i], s1 = stops[i + 1];
+                if (v >= s0.dbz && v <= s1.dbz) {
+                    const t = (v - s0.dbz) / (s1.dbz - s0.dbz);
+                    r = Math.round(lerp(s0.r, s1.r, t));
+                    g = Math.round(lerp(s0.g, s1.g, t));
+                    b = Math.round(lerp(s0.b, s1.b, t));
+                    a = Math.round(lerp(s0.a, s1.a, t));
+                    break;
+                }
+            }
+            if (v > stops[stops.length - 1].dbz) {
+                const last = stops[stops.length - 1];
+                r = last.r; g = last.g; b = last.b; a = last.a;
+            }
+        }
+        const idx = v * 4;
+        lut[idx] = r; lut[idx + 1] = g; lut[idx + 2] = b; lut[idx + 3] = a;
+    }
+    return lut;
+})();
+
+function initDopplerCanvas() {
+    dopplerCanvas = document.getElementById('dopplerRadarCanvas');
+    if (!dopplerCanvas) return;
+    dopplerCtx = dopplerCanvas.getContext('2d');
+    if (!dopplerOffscreenCanvas) {
+        dopplerOffscreenCanvas = document.createElement('canvas');
+        dopplerOffscreenCtx = dopplerOffscreenCanvas.getContext('2d');
+    }
+}
+
+function renderDopplerCanvas() {
+    if (!radarMap) return;
+    if (!dopplerCanvas || !dopplerCtx) {
+        initDopplerCanvas();
+        if (!dopplerCanvas || !dopplerCtx) return;
+    }
+
+    const size = radarMap.getSize();
+    if (!size || size.x === 0 || size.y === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const targetW = Math.floor(size.x * dpr);
+    const targetH = Math.floor(size.y * dpr);
+
+    if (dopplerCanvas.width !== targetW || dopplerCanvas.height !== targetH) {
+        dopplerCanvas.width = targetW;
+        dopplerCanvas.height = targetH;
+        dopplerCanvas.style.width = size.x + 'px';
+        dopplerCanvas.style.height = size.y + 'px';
+    }
+
+    dopplerCtx.setTransform(1, 0, 0, 1, 0, 0);
+    dopplerCtx.scale(dpr, dpr);
+
+    const allCells = [...localEchoCells, ...regionalEchoCells];
+    if (allCells.length === 0) {
+        dopplerCtx.clearRect(0, 0, size.x, size.y);
+        return;
+    }
+
+    // Cuadrícula rasterizada continua IDW (Inverse Distance Weighting)
+    const S = 3;
+    const gw = Math.ceil(size.x / S);
+    const gh = Math.ceil(size.y / S);
+
+    if (dopplerOffscreenCanvas.width !== gw || dopplerOffscreenCanvas.height !== gh) {
+        dopplerOffscreenCanvas.width = gw;
+        dopplerOffscreenCanvas.height = gh;
+    }
+
+    const grid = new Float32Array(gw * gh);
+    const bounds = radarMap.getBounds();
+
+    for (let c = 0; c < allCells.length; c++) {
+        const cell = allCells[c];
+        if (cell.lat < bounds.getSouth() - 1.5 || cell.lat > bounds.getNorth() + 1.5 ||
+            cell.lon < bounds.getWest() - 1.5 || cell.lon > bounds.getEast() + 1.5) {
+            continue;
+        }
+
+        const pt = radarMap.latLngToContainerPoint([cell.lat, cell.lon]);
+        const edge = radarMap.latLngToContainerPoint([cell.lat, cell.lon + cell.radius / (111320 * Math.cos(cell.lat * Math.PI / 180))]);
+        const rPx = Math.max(16, Math.hypot(edge.x - pt.x, edge.y - pt.y));
+
+        const sx = pt.x / S;
+        const sy = pt.y / S;
+        const sr = rPx / S;
+
+        const maxR = sr * 1.35;
+        const minX = Math.max(0, Math.floor(sx - maxR));
+        const maxX = Math.min(gw - 1, Math.ceil(sx + maxR));
+        const minY = Math.max(0, Math.floor(sy - maxR));
+        const maxY = Math.min(gh - 1, Math.ceil(sy + maxR));
+        if (minX > maxX || minY > maxY) continue;
+
+        const seed = cell.seed || (Math.abs(cell.lat * 1000 + cell.lon * 100) % 100);
+
+        for (let y = minY; y <= maxY; y++) {
+            const dy = y - sy;
+            const row = y * gw;
+            for (let x = minX; x <= maxX; x++) {
+                const dx = x - sx;
+                const dist = Math.hypot(dx, dy);
+                // Ruido Simplex al contorno para siluetas de lluvia orgánicas
+                const noise = DopplerSimplex.noise2D(x * 0.055 + seed, y * 0.055 + seed) * 0.35;
+                const effR = sr * (1.0 + noise);
+                if (dist < effR) {
+                    const norm = 1.0 - (dist / effR);
+                    const val = cell.dbz * Math.pow(norm, 1.35) * (cell.opacityMult || 1.0);
+                    const idx = row + x;
+                    if (val > grid[idx]) {
+                        grid[idx] = val;
+                    }
+                }
+            }
+        }
+    }
+
+    const imgData = dopplerOffscreenCtx.createImageData(gw, gh);
+    const data = imgData.data;
+
+    for (let i = 0; i < grid.length; i++) {
+        const dbz = grid[i];
+        if (dbz >= 10) {
+            const lutIdx = Math.min(75, Math.round(dbz)) * 4;
+            const pIdx = i * 4;
+            data[pIdx] = DOPPLER_LUT[lutIdx];
+            data[pIdx + 1] = DOPPLER_LUT[lutIdx + 1];
+            data[pIdx + 2] = DOPPLER_LUT[lutIdx + 2];
+            data[pIdx + 3] = DOPPLER_LUT[lutIdx + 3];
+        }
+    }
+
+    dopplerOffscreenCtx.putImageData(imgData, 0, 0);
+
+    dopplerCtx.clearRect(0, 0, size.x, size.y);
+    dopplerCtx.save();
+    // Blur gaussiano leve y bordes que se desvanecen a transparente
+    dopplerCtx.filter = 'blur(4px)';
+    dopplerCtx.imageSmoothingEnabled = true;
+    dopplerCtx.imageSmoothingQuality = 'high';
+    dopplerCtx.drawImage(dopplerOffscreenCanvas, 0, 0, size.x, size.y);
+    dopplerCtx.restore();
+}
+
 // Catálogo de localidades con "puntos azulitos" interactivos en el radar
 const RADAR_CITIES = [
     { name: "Bogotá", country: "Colombia", lat: 4.7110, lon: -74.0721, isColombia: true },
@@ -407,6 +619,20 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
         "Satélite Meteorológico HD": esriSatellite
     }, null, { position: 'topright' }).addTo(radarMap);
 
+    // 2.5 Inicializar lienzo canvas de ecos continuos Doppler
+    initDopplerCanvas();
+
+    radarMap.on('move zoom resize', () => {
+        renderDopplerCanvas();
+    });
+
+    radarMap.on('baselayerchange', (e) => {
+        const c = document.getElementById('dopplerRadarCanvas');
+        if (c) {
+            c.classList.toggle('mode-normal', e.name && e.name.includes('Satélite'));
+        }
+    });
+
     // 3. Crear pane dedicado para los ecos Doppler (por encima de mapas y RainViewer, zIndex 420)
     if (!radarMap.getPane('dopplerEchoPane')) {
         radarMap.createPane('dopplerEchoPane');
@@ -453,8 +679,8 @@ function addRadarCityDots(activeCityName) {
         const dotIcon = L.divIcon({
             className: 'radar-dot-wrapper',
             html: dotHtml,
-            iconSize: isActive ? [18, 18] : [14, 14],
-            iconAnchor: isActive ? [9, 9] : [7, 7]
+            iconSize: isActive ? [12, 12] : [8, 8],
+            iconAnchor: isActive ? [6, 6] : [4, 4]
         });
 
         const marker = L.marker([city.lat, city.lon], { icon: dotIcon, zIndexOffset: isActive ? 500 : 100 }).addTo(radarMap);
@@ -538,6 +764,7 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
         radarMap.removeLayer(rainEchoGroup);
     }
     rainEchoGroup = L.layerGroup().addTo(radarMap);
+    localEchoCells = [];
 
     const badge = document.getElementById('radarActiveEchoBadge');
     const desc = (conditionDesc || "").toLowerCase();
@@ -561,170 +788,104 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
         else if (isDrizzle) level = 'green';
     }
 
-    // 1. NIVEL VERDE: Llovizna y Lluvia Ligera (5 - 25 dBZ) -> 100% VERDE
     if (level === 'green') {
         if (badge) {
             badge.className = "badge bg-success text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.innerHTML = `<i class="bi bi-cloud-drizzle-fill me-1"></i>🟩 Eco Verde: Llovizna activa en ${city} (5 - 25 dBZ)`;
         }
+        // Celda central y satélites orgánicos (sin bordes stroke ni anillos concéntricos)
+        localEchoCells.push({ lat, lon, radius: 46000, dbz: 22, opacityMult: 1.0, seed: 14 });
+        localEchoCells.push({ lat: lat + 0.12, lon: lon - 0.14, radius: 34000, dbz: 18, opacityMult: 0.9, seed: 48 });
+        localEchoCells.push({ lat: lat - 0.10, lon: lon + 0.12, radius: 28000, dbz: 16, opacityMult: 0.85, seed: 75 });
 
-        // Celda Principal de Llovizna Verde (44 km de radio - claramente visible)
+        // Hit-layer invisible para tooltip
         L.circle([lat, lon], {
             pane: 'dopplerEchoPane',
-            radius: 44000,
-            color: '#059669',
-            fillColor: '#10b981',
-            fillOpacity: 0.55,
-            weight: 2.5
+            radius: 46000,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
         }).bindTooltip(`🟩 <strong>Eco Doppler Verde (18 dBZ):</strong> Llovizna activa en ${city} (&lt; 2.5 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
-
-        // Celda Periférica 1 (Norte / Costa)
-        L.circle([lat + 0.12, lon - 0.14], {
-            pane: 'dopplerEchoPane',
-            radius: 34000,
-            color: '#16a34a',
-            fillColor: '#22c55e',
-            fillOpacity: 0.48,
-            weight: 2
-        }).bindTooltip(`🟩 <strong>Frente de Llovizna:</strong> Nubosidad lluviosa costera (15 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
-
-        // Celda Periférica 2 (Sur / Interior)
-        L.circle([lat - 0.10, lon + 0.12], {
-            pane: 'dopplerEchoPane',
-            radius: 28000,
-            color: '#059669',
-            fillColor: '#34d399',
-            fillOpacity: 0.45,
-            weight: 2
-        }).bindTooltip(`🟩 <strong>Lloviznas Dispersas:</strong> Gotas finas (12 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
-
-        // Núcleo de Drizzle Continuo
-        L.circle([lat + 0.03, lon + 0.02], {
-            pane: 'dopplerEchoPane',
-            radius: 20000,
-            color: '#047857',
-            fillColor: '#10b981',
-            fillOpacity: 0.68,
-            weight: 2.5
-        }).bindTooltip(`🟩 <strong>Llovizna Continua:</strong> 1.5 - 2.5 mm/h`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // 2. NIVEL AMARILLO: Lluvia Moderada (25 - 35 dBZ) -> Verde exterior + Amarillo central
     else if (level === 'yellow') {
         if (badge) {
             badge.className = "badge bg-warning text-dark rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.innerHTML = `<i class="bi bi-cloud-rain-fill me-1"></i>🟨 Eco Amarillo: Lluvia Moderada en ${city} (25 - 35 dBZ)`;
         }
+        localEchoCells.push({ lat, lon, radius: 48000, dbz: 33, opacityMult: 1.0, seed: 25 });
+        localEchoCells.push({ lat: lat + 0.10, lon: lon - 0.12, radius: 32000, dbz: 25, opacityMult: 0.9, seed: 59 });
 
-        // Anillo exterior Verde
         L.circle([lat, lon], {
             pane: 'dopplerEchoPane',
-            radius: 46000,
-            color: '#059669',
-            fillColor: '#10b981',
-            fillOpacity: 0.45,
-            weight: 2
-        }).bindTooltip(`🟩 <strong>Eco Verde:</strong> Llovizna periférica (15 dBZ)`, { direction: 'top' }).addTo(rainEchoGroup);
-
-        L.circle([lat + 0.10, lon - 0.12], {
-            pane: 'dopplerEchoPane',
-            radius: 32000,
-            color: '#16a34a',
-            fillColor: '#22c55e',
-            fillOpacity: 0.48,
-            weight: 2
-        }).addTo(rainEchoGroup);
-
-        // Núcleo central Amarillo
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: 22000,
-            color: '#ca8a04',
-            fillColor: '#eab308',
-            fillOpacity: 0.65,
-            weight: 2.5
-        }).bindTooltip(`🟨 <strong>Eco Doppler Amarillo (30 dBZ):</strong> Lluvia moderada (2.5 - 7.5 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+            radius: 48000,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
+        }).bindTooltip(`🟨 <strong>Eco Doppler Amarillo (30 dBZ):</strong> Lluvia moderada en ${city} (2.5 - 7.5 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // 3. NIVEL NARANJA: Lluvia Fuerte (35 - 45 dBZ) -> Verde -> Amarillo -> Naranja
     else if (level === 'orange') {
         if (badge) {
             badge.className = "badge bg-danger text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.innerHTML = `<i class="bi bi-cloud-rain-heavy-fill me-1"></i>🟧 Eco Naranja: Lluvia Fuerte en ${city} (35 - 45 dBZ)`;
         }
+        localEchoCells.push({ lat, lon, radius: 50000, dbz: 43, opacityMult: 1.0, seed: 36 });
+        localEchoCells.push({ lat: lat + 0.08, lon: lon - 0.10, radius: 34000, dbz: 32, opacityMult: 0.9, seed: 68 });
 
         L.circle([lat, lon], {
             pane: 'dopplerEchoPane',
-            radius: 48000,
-            color: '#059669',
-            fillColor: '#10b981',
-            fillOpacity: 0.42,
-            weight: 2
-        }).addTo(rainEchoGroup);
-
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: 30000,
-            color: '#ca8a04',
-            fillColor: '#eab308',
-            fillOpacity: 0.55,
-            weight: 2
-        }).addTo(rainEchoGroup);
-
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: 16000,
-            color: '#ea580c',
-            fillColor: '#f97316',
-            fillOpacity: 0.72,
-            weight: 2.5
-        }).bindTooltip(`🟧 <strong>Eco Doppler Naranja (40 dBZ):</strong> Lluvia fuerte (7.5 - 15 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+            radius: 50000,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
+        }).bindTooltip(`🟧 <strong>Eco Doppler Naranja (40 dBZ):</strong> Lluvia fuerte en ${city} (7.5 - 15 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // 4. NIVEL ROJO: Tormenta / Lluvia Torrencial (45 - 55 dBZ)
     else if (level === 'red') {
         if (badge) {
             badge.className = "badge bg-danger text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.innerHTML = `<i class="bi bi-cloud-lightning-rain-fill me-1"></i>🟥 Eco Rojo: Tormenta / Lluvia Torrencial (45 - 55 dBZ)`;
         }
+        localEchoCells.push({ lat, lon, radius: 52000, dbz: 53, opacityMult: 1.0, seed: 47 });
+        localEchoCells.push({ lat: lat + 0.06, lon: lon - 0.08, radius: 36000, dbz: 38, opacityMult: 0.9, seed: 81 });
 
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 50000, color: '#059669', fillColor: '#10b981', fillOpacity: 0.40, weight: 2 }).addTo(rainEchoGroup);
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 34000, color: '#ca8a04', fillColor: '#eab308', fillOpacity: 0.50, weight: 2 }).addTo(rainEchoGroup);
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 20000, color: '#ea580c', fillColor: '#f97316', fillOpacity: 0.65, weight: 2 }).addTo(rainEchoGroup);
         L.circle([lat, lon], {
             pane: 'dopplerEchoPane',
-            radius: 9500,
-            color: '#dc2626',
-            fillColor: '#ef4444',
-            fillOpacity: 0.82,
-            weight: 2.5
-        }).bindTooltip(`🟥 <strong>Eco Doppler Rojo (50 dBZ):</strong> Tormenta y Lluvia Torrencial (15 - 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+            radius: 52000,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
+        }).bindTooltip(`🟥 <strong>Eco Doppler Rojo (50 dBZ):</strong> Tormenta y Lluvia Torrencial en ${city} (15 - 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // 5. NIVEL SEVERO / GRANIZO (> 55 dBZ)
     else if (level === 'purple') {
         if (badge) {
             badge.className = "badge text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.style.backgroundColor = '#7c3aed';
             badge.innerHTML = `<i class="bi bi-lightning-charge-fill me-1"></i>🟪 Eco Severo: Tormenta Extrema / Granizo (> 55 dBZ)`;
         }
+        localEchoCells.push({ lat, lon, radius: 55000, dbz: 63, opacityMult: 1.0, seed: 58 });
+        localEchoCells.push({ lat: lat + 0.05, lon: lon - 0.07, radius: 38000, dbz: 46, opacityMult: 0.9, seed: 93 });
 
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 52000, color: '#059669', fillColor: '#10b981', fillOpacity: 0.40, weight: 2 }).addTo(rainEchoGroup);
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 36000, color: '#ca8a04', fillColor: '#eab308', fillOpacity: 0.50, weight: 2 }).addTo(rainEchoGroup);
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 22000, color: '#ea580c', fillColor: '#f97316', fillOpacity: 0.62, weight: 2 }).addTo(rainEchoGroup);
-        L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 11000, color: '#dc2626', fillColor: '#ef4444', fillOpacity: 0.75, weight: 2 }).addTo(rainEchoGroup);
         L.circle([lat, lon], {
             pane: 'dopplerEchoPane',
-            radius: 4500,
-            color: '#7c3aed',
-            fillColor: '#8b5cf6',
-            fillOpacity: 0.92,
-            weight: 3
-        }).bindTooltip(`🟪 <strong>Alerta Doppler (60 dBZ):</strong> Tormenta Severa / Núcleo de Granizo (> 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+            radius: 55000,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
+        }).bindTooltip(`🟪 <strong>Alerta Doppler (60 dBZ):</strong> Tormenta Severa / Granizo en ${city} (> 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // SIN PRECIPITACIÓN LOCAL
     else {
         if (badge) {
             badge.className = "badge bg-light text-secondary border rounded-pill px-3 py-1 small";
             badge.innerHTML = `<i class="bi bi-cloud-sun me-1"></i>Sin lluvia local en ${city} — Ecos regionales activos`;
         }
+        localEchoCells = [];
     }
+
+    renderDopplerCanvas();
 
     if (isDopplerSweepActive) {
         scanDopplerForSevereStorms();
@@ -772,10 +933,8 @@ const REGIONAL_DOPPLER_SYSTEMS = [
 ];
 
 /**
- * Renderiza los ecos Doppler regionales.
- * En modo estático muestra todos los sistemas con reflectividad plena.
- * En modo animación (frameIndex no nulo) calcula el ciclo biológico de cada tormenta:
- * aparecen, crecen a núcleos de lluvia, se desplazan con el viento y se disipan.
+ * Renderiza los ecos Doppler regionales mediante IDW y Ruido Simplex en Canvas.
+ * Elimina totalmente los anillos concéntricos y bordes, proporcionando un radar continuo y orgánico.
  */
 function renderRegionalColombiaEchoes(frameIndex = null) {
     if (!radarMap) return;
@@ -784,22 +943,22 @@ function renderRegionalColombiaEchoes(frameIndex = null) {
         regionalEchoGroup = L.layerGroup().addTo(radarMap);
     }
     regionalEchoGroup.clearLayers();
+    regionalEchoCells = [];
 
     const totalFrames = (radarFrames && radarFrames.length > 0) ? radarFrames.length : 13;
     const isAnimating = (frameIndex !== null && typeof frameIndex === 'number');
 
-    REGIONAL_DOPPLER_SYSTEMS.forEach(sys => {
+    REGIONAL_DOPPLER_SYSTEMS.forEach((sys, idx) => {
         let lat = sys.baseLat;
         let lon = sys.baseLon;
         let radius = sys.baseRadius;
         let opacityMult = 1.0;
         let activeLevels = sys.levels;
 
-        // En reproducción animada: calcular ciclo de vida (aparece -> viaja -> se disipa)
+        // En reproducción animada: calcular ciclo de vida biológico de la tormenta
         if (isAnimating) {
             const relFrame = (frameIndex - sys.phase + totalFrames) % totalFrames;
 
-            // Si está fuera de su ciclo de vida en este fotograma, desaparece temporalmente
             if (relFrame >= sys.lifeFrames && sys.lifeFrames < totalFrames) {
                 return;
             }
@@ -807,18 +966,14 @@ function renderRegionalColombiaEchoes(frameIndex = null) {
             const progress = (sys.lifeFrames > 1) ? (relFrame / (sys.lifeFrames - 1)) : 0.5;
             const intensity = Math.sin(progress * Math.PI);
 
-            // Si la reflectividad es ínfima, desaparece del radar
             if (intensity < 0.12) return;
 
-            // Desplazamiento atmosférico por viento a lo largo de los fotogramas
             lat += sys.driftLat * relFrame;
             lon += sys.driftLon * relFrame;
 
-            // Modulación de radio y opacidad
-            radius = sys.baseRadius * (0.65 + 0.35 * intensity);
-            opacityMult = 0.30 + 0.70 * intensity;
+            radius = sys.baseRadius * (0.70 + 0.30 * intensity);
+            opacityMult = 0.35 + 0.65 * intensity;
 
-            // Niveles de color Doppler según la intensidad actual de la celda
             if (intensity < 0.40) {
                 activeLevels = ['green'];
             } else if (intensity < 0.65) {
@@ -828,73 +983,54 @@ function renderRegionalColombiaEchoes(frameIndex = null) {
             }
         }
 
-        // Graficar anillos métricos concéntricos Doppler
-        drawDopplerConcentricRings(lat, lon, radius, activeLevels, opacityMult, sys.name);
+        // Determinar dBZ pico y tooltip informativo
+        let dbz = 22;
+        let icon = "🟩";
+        let desc = "Llovizna y nubosidad activa";
+        if (activeLevels.includes('purple')) {
+            dbz = 62; icon = "🟪"; desc = "Tormenta Severa / Granizo continuo";
+        } else if (activeLevels.includes('red')) {
+            dbz = 52; icon = "🟥"; desc = "Tormenta Eléctrica activa";
+        } else if (activeLevels.includes('orange')) {
+            dbz = 42; icon = "🟧"; desc = "Lluvia Fuerte / Aguacero";
+        } else if (activeLevels.includes('yellow')) {
+            dbz = 32; icon = "🟨"; desc = "Lluvia Moderada";
+        }
+
+        // Hit-layer invisible interactivo para el tooltip (SIN círculos concéntricos ni bordes)
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: radius,
+            stroke: false,
+            fillColor: '#000000',
+            fillOpacity: 0.0001,
+            interactive: true
+        }).bindTooltip(`${icon} <strong>${sys.name}:</strong> ${desc} (${dbz} dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+
+        // Celda convectiva principal para el canvas IDW continuo
+        regionalEchoCells.push({
+            lat: lat,
+            lon: lon,
+            radius: radius,
+            dbz: dbz,
+            opacityMult: opacityMult,
+            seed: idx * 17 + 5
+        });
+
+        // Celda secundaria lobular para formas orgánicas no circulares
+        if (dbz >= 32) {
+            regionalEchoCells.push({
+                lat: lat + (sys.driftLat || 0.01) * 3,
+                lon: lon + (sys.driftLon || -0.01) * 3,
+                radius: radius * 0.72,
+                dbz: Math.round(dbz * 0.78),
+                opacityMult: opacityMult * 0.9,
+                seed: idx * 23 + 19
+            });
+        }
     });
-}
 
-function drawDopplerConcentricRings(lat, lon, baseRadius, levels, opacityMult, systemName) {
-    if (!regionalEchoGroup) return;
-
-    // 1. Capa Verde: Llovizna y Lluvia Ligera (15-25 dBZ)
-    if (levels.includes('green')) {
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: baseRadius,
-            color: '#059669',
-            fillColor: '#10b981',
-            fillOpacity: Math.min(0.55, 0.42 * opacityMult),
-            weight: 2
-        }).bindTooltip(`🟩 <strong>${systemName}:</strong> Llovizna y nubosidad activa (18 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-    }
-
-    // 2. Capa Amarilla: Lluvia Moderada (25-35 dBZ)
-    if (levels.includes('yellow')) {
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: Math.round(baseRadius * 0.65),
-            color: '#ca8a04',
-            fillColor: '#eab308',
-            fillOpacity: Math.min(0.65, 0.50 * opacityMult),
-            weight: 1.8
-        }).bindTooltip(`🟨 <strong>${systemName}:</strong> Lluvia moderada (30 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-    }
-
-    // 3. Capa Naranja: Lluvia Fuerte (35-45 dBZ)
-    if (levels.includes('orange')) {
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: Math.round(baseRadius * 0.42),
-            color: '#ea580c',
-            fillColor: '#f97316',
-            fillOpacity: Math.min(0.72, 0.60 * opacityMult),
-            weight: 2
-        }).bindTooltip(`🟧 <strong>${systemName}:</strong> Lluvia fuerte / Aguacero (40 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-    }
-
-    // 4. Capa Roja: Tormenta Eléctrica (45-55 dBZ)
-    if (levels.includes('red')) {
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: Math.round(baseRadius * 0.25),
-            color: '#dc2626',
-            fillColor: '#ef4444',
-            fillOpacity: Math.min(0.85, 0.75 * opacityMult),
-            weight: 2.2
-        }).bindTooltip(`🟥 <strong>${systemName}:</strong> Tormenta eléctrica activa (50 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-    }
-
-    // 5. Capa Severa / Granizo: Núcleo Convectivo Extremo (>55 dBZ)
-    if (levels.includes('purple')) {
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: Math.round(baseRadius * 0.14),
-            color: '#7c3aed',
-            fillColor: '#8b5cf6',
-            fillOpacity: Math.min(0.95, 0.90 * opacityMult),
-            weight: 2.5
-        }).bindTooltip(`🟪 <strong>${systemName}:</strong> Tormenta severa / Granizo continuo (>55 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-    }
+    renderDopplerCanvas();
 }
 
 // --------------------------------------------------------------------------
