@@ -9,6 +9,7 @@ builder.Services.AddHttpClient();
 // Weather Service Registrations
 builder.Services.AddScoped<SimulatedWeatherService>();
 builder.Services.AddScoped<OpenMeteoWeatherService>();
+builder.Services.AddScoped<WindService>();
 
 // Default primary provider: Live Open-Meteo API (with automatic fallback to simulation)
 builder.Services.AddScoped<IWeatherService, OpenMeteoWeatherService>();
@@ -29,6 +30,11 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.MapControllerRoute(
+    name: "viento",
+    pattern: "viento",
+    defaults: new { controller = "Home", action = "Viento" });
 
 app.MapControllerRoute(
         name: "default",

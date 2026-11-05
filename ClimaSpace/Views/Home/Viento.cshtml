@@ -1,0 +1,186 @@
+@{
+    ViewData["Title"] = "Mapa de Viento Animado en Vivo (MSN & Windy Style)";
+}
+
+@section Scripts {
+    <script src="~/js/windmap.js" asp-append-version="true"></script>
+}
+
+<link rel="stylesheet" href="~/css/windmap.css" asp-append-version="true" />
+
+<div class="container-fluid px-3 py-3">
+    <!-- Contenedor Principal del Apartado de Viento -->
+    <div class="wind-section-wrapper">
+        <!-- Barra Superior de Herramientas -->
+        <header class="wind-top-bar">
+            <!-- Marca y Título -->
+            <div class="wind-brand-box">
+                <div class="wind-brand-icon">
+                    <i class="bi bi-wind"></i>
+                </div>
+                <div>
+                    <h1 class="wind-brand-title">Viento<span>Space</span></h1>
+                    <span class="wind-brand-subtitle">Vectores en tiempo real (10m)</span>
+                </div>
+            </div>
+
+            <!-- Buscador de Ciudades Geocoding -->
+            <div class="wind-search-box">
+                <div class="wind-search-input-wrap">
+                    <i class="bi bi-search text-secondary me-2"></i>
+                    <input type="text" 
+                           id="windCitySearch" 
+                           class="wind-search-input" 
+                           placeholder="Buscar ciudad o país (ej. Bogotá, Miami, Madrid, Tokio)..." 
+                           autocomplete="off" 
+                           spellcheck="false" />
+                </div>
+                <div id="windSearchResults" class="wind-search-dropdown d-none"></div>
+            </div>
+
+            <!-- Controles y Acciones -->
+            <div class="wind-actions">
+                <!-- Toggle de Partículas -->
+                <label class="wind-toggle-label" title="Activar o pausar partículas animadas">
+                    <input type="checkbox" id="windToggleParticles" checked />
+                    <span class="wind-toggle-switch"></span>
+                    <span class="label-text"><i class="bi bi-water"></i> Animación</span>
+                </label>
+
+                <!-- Selector de Capas Base -->
+                <select id="windLayerSelect" class="wind-select" title="Seleccionar capa base del mapa">
+                    <option value="carto-dark" selected>🌙 CARTO Oscuro</option>
+                    <option value="esri-satellite">🛰️ Satélite Esri</option>
+                    <option value="osm-standard">🗺️ OpenStreetMap</option>
+                </select>
+
+                <!-- Centrar en mi ubicación -->
+                <button type="button" id="windBtnLocate" class="wind-btn-icon" title="Mi ubicación">
+                    <i class="bi bi-geo-alt"></i>
+                </button>
+
+                <!-- Pantalla Completa -->
+                <button type="button" id="windBtnFullscreen" class="wind-btn-icon" title="Pantalla completa">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Visor del Mapa y Lienzo de Partículas -->
+        <div class="wind-map-container">
+            <div id="windMap"></div>
+            <canvas id="particleCanvas"></canvas>
+
+            <!-- Pill de Estado -->
+            <div id="windStatusBadge" class="wind-status-badge">
+                <span class="wind-status-dot"></span>
+                <span id="windStatusText">Conectando con Open-Meteo...</span>
+            </div>
+
+            <!-- Botones Flotantes de Zoom -->
+            <div class="wind-zoom-controls">
+                <button type="button" id="windBtnZoomIn" class="wind-btn-float" title="Acercar (+)">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <button type="button" id="windBtnZoomOut" class="wind-btn-float" title="Alejar (−)">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tooltip de Inspección Flotante -->
+            <div id="windTooltip" class="wind-tooltip d-none">
+                <button type="button" id="windCloseTooltip" class="wind-tooltip-close" title="Cerrar">
+                    <i class="bi bi-x"></i>
+                </button>
+                <span id="windTooltipCoords" class="wind-tooltip-coords">--°, --°</span>
+                <div class="wind-tooltip-body">
+                    <div>
+                        <span id="windTooltipSpeed" class="wind-speed-num">--</span>
+                        <span class="wind-speed-unit">km/h</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="wind-arrow-box">
+                            <i id="windTooltipArrow" class="bi bi-arrow-up wind-arrow-icon"></i>
+                        </div>
+                        <div>
+                            <div id="windTooltipCardinal" class="fw-bold text-white small">--</div>
+                            <div id="windTooltipDegrees" class="text-secondary" style="font-size: 0.68rem;">--°</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wind-tooltip-footer">
+                    <span id="windTooltipTime">--</span>
+                    <span id="windTooltipScale" class="wind-badge-scale">--</span>
+                </div>
+            </div>
+
+            <!-- Leyenda de Colores MSN El Tiempo -->
+            <div class="wind-legend">
+                <div class="wind-legend-title">
+                    <span><i class="bi bi-speedometer2 me-1"></i>Viento (km/h)</span>
+                    <span style="font-family: monospace;">MSN</span>
+                </div>
+                <div class="wind-legend-bar"></div>
+                <div class="wind-legend-ticks">
+                    <span>0</span>
+                    <span>10</span>
+                    <span>20</span>
+                    <span>35</span>
+                    <span>55</span>
+                    <span>70</span>
+                    <span>100+</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra Inferior de la Línea de Tiempo (7 Días / 168 Horas) -->
+        <footer class="wind-timeline-bar">
+            <div class="wind-timeline-top">
+                <!-- Controles de Reproducción -->
+                <div class="wind-play-group">
+                    <button type="button" id="windBtnPrev" class="wind-btn-nav" title="Retroceder 1 hora (←)">
+                        <i class="bi bi-skip-backward-fill"></i>
+                    </button>
+                    <button type="button" id="windBtnPlay" class="wind-btn-play" title="Reproducir / Pausa (Espacio)">
+                        <i id="windPlayIcon" class="bi bi-play-fill"></i>
+                    </button>
+                    <button type="button" id="windBtnNext" class="wind-btn-nav" title="Avanzar 1 hora (→)">
+                        <i class="bi bi-skip-forward-fill"></i>
+                    </button>
+                    <button type="button" id="windBtnNow" class="wind-btn-now" title="Ir a la hora actual">
+                        AHORA
+                    </button>
+                </div>
+
+                <!-- Display de Fecha y Hora -->
+                <div class="wind-time-readout">
+                    <i class="bi bi-clock-history text-info"></i>
+                    <span id="windTimePrimary">Cargando pronóstico...</span>
+                    <span id="windTimeRelative" class="wind-time-badge">Ahora</span>
+                </div>
+
+                <!-- Velocidad de Reproducción -->
+                <div class="wind-speed-select">
+                    <button type="button" class="wind-btn-speed active" data-speed="1">1x</button>
+                    <button type="button" class="wind-btn-speed" data-speed="2">2x</button>
+                    <button type="button" class="wind-btn-speed" data-speed="4">4x</button>
+                </div>
+            </div>
+
+            <!-- Pestañas Rápidas para los 7 Días -->
+            <div id="windDayTabs" class="wind-day-tabs"></div>
+
+            <!-- Deslizador Scrubber de 168 horas -->
+            <div class="wind-slider-wrap">
+                <input type="range" 
+                       id="windTimelineSlider" 
+                       min="0" 
+                       max="167" 
+                       value="0" 
+                       step="1" 
+                       title="Línea de tiempo del pronóstico a 7 días" />
+                <div id="windSliderProgress" class="wind-slider-progress"></div>
+            </div>
+        </footer>
+    </div>
+</div>

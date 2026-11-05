@@ -9,15 +9,18 @@ public class HomeController : Controller
 {
     private readonly OpenMeteoWeatherService _openMeteoService;
     private readonly SimulatedWeatherService _simulatedService;
+    private readonly WindService _windService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
         OpenMeteoWeatherService openMeteoService,
         SimulatedWeatherService simulatedService,
+        WindService windService,
         ILogger<HomeController> logger)
     {
         _openMeteoService = openMeteoService;
         _simulatedService = simulatedService;
+        _windService = windService;
         _logger = logger;
     }
 
@@ -84,6 +87,28 @@ public class HomeController : Controller
         var cities = await _simulatedService.GetPopularCitiesAsync();
         var filtered = cities.Where(c => c.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         return Json(filtered);
+    }
+
+    [HttpGet]
+    public IActionResult Viento()
+    {
+        ViewData["Title"] = "Mapa de Viento Animado en Vivo (MSN & Windy Style)";
+        return View();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetWindGrid(double south, double north, double west, double east)
+    {
+        try
+        {
+            var json = await _windService.GetWindGridForecastAsync(south, north, west, east);
+            return Content(json, "application/json");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en GetWindGrid al obtener cuadrícula de viento");
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     public IActionResult Privacy()

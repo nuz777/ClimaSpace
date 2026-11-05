@@ -35,12 +35,22 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navContent">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
+                @{
+                    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+                }
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center gap-1 ms-lg-3">
                     <li class="nav-item">
-                        <span class="badge badge-brand rounded-pill px-3 py-2 ms-lg-3 d-inline-flex align-items-center gap-2">
-                            <span class="pulse-indicator"></span>
-                            <span>Radar Doppler &amp; Datos en Tiempo Real</span>
-                        </span>
+                        <a class="nav-link py-2 px-3 rounded-pill fw-semibold @(currentAction == "Index" ? "active text-primary bg-primary-subtle" : "text-dark")" 
+                           asp-controller="Home" asp-action="Index">
+                            <i class="bi bi-radar me-1 text-primary"></i> Pronóstico &amp; Radar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 rounded-pill fw-semibold @(currentAction == "Viento" ? "active text-primary bg-primary-subtle" : "text-dark")" 
+                           asp-controller="Home" asp-action="Viento">
+                            <i class="bi bi-wind me-1 text-info"></i> Mapa de Viento
+                            <span class="badge bg-info text-dark fw-bold rounded-pill ms-1 px-2 py-1" style="font-size: 0.65rem;">En vivo</span>
+                        </a>
                     </li>
                 </ul>
                 <div class="d-flex align-items-center gap-3">
