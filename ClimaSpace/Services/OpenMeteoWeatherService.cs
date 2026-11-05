@@ -45,6 +45,7 @@ public class OpenMeteoWeatherService : IWeatherService
             "olkhahoma" or "oklahoma" => "Oklahoma City, United States",
             "kansas" => "Wichita, Kansas",
             "texas" => "Houston, Texas",
+            "juan mina" or "juan mina en colombia" or "barranquilla - juan mina" or "barranquilla juan mina" or "juan mina barranquilla" or "juan mina, barranquilla" => "Juan Mina, Atlantico, Colombia",
             _ => cityName
         };
 
@@ -89,6 +90,8 @@ public class OpenMeteoWeatherService : IWeatherService
                 resolvedName = "Kansas";
             else if (cityName.Equals("Texas", StringComparison.OrdinalIgnoreCase))
                 resolvedName = "Texas";
+            else if (cityName.StartsWith("juan mina", StringComparison.OrdinalIgnoreCase) || cityName.Contains("juan mina", StringComparison.OrdinalIgnoreCase))
+                resolvedName = "Juan Mina";
 
             double lat = firstResult.GetProperty("latitude").GetDouble();
             double lon = firstResult.GetProperty("longitude").GetDouble();
@@ -275,7 +278,7 @@ public class OpenMeteoWeatherService : IWeatherService
                 },
                 Hourly = hourlyForecasts,
                 Daily = dailyForecasts,
-                PopularCities = popularCities.Take(8).ToList()
+                PopularCities = popularCities.Take(12).ToList()
             };
 
             Cache[cityName] = (report, DateTime.UtcNow.AddMinutes(5));

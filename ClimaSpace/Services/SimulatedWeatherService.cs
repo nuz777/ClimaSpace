@@ -22,6 +22,7 @@ public class SimulatedWeatherService : IWeatherService
         ["Medellín"] = new("Medellín", "Colombia", "Antioquia", 6.2442, -75.5812, -5, 22.0, 4.0, WeatherCondition.PartlyCloudy),
         ["Cali"] = new("Cali", "Colombia", "Valle del Cauca", 3.4516, -76.5320, -5, 26.0, 5.0, WeatherCondition.PartlyCloudy),
         ["Barranquilla"] = new("Barranquilla", "Colombia", "Atlántico", 10.9685, -74.7813, -5, 29.0, 4.0, WeatherCondition.Sunny),
+        ["Juan Mina"] = new("Juan Mina", "Colombia", "Atlántico", 10.9558, -74.8917, -5, 28.5, 4.0, WeatherCondition.Sunny),
         ["Cartagena"] = new("Cartagena", "Colombia", "Bolívar", 10.3910, -75.4794, -5, 29.5, 3.5, WeatherCondition.Sunny),
         ["Bucaramanga"] = new("Bucaramanga", "Colombia", "Santander", 7.1254, -73.1198, -5, 23.0, 4.5, WeatherCondition.PartlyCloudy),
         ["Mississippi"] = new("Mississippi", "Estados Unidos", "Mississippi", 32.2988, -90.1848, -6, 20.0, 6.0, WeatherCondition.PartlyCloudy),
@@ -221,7 +222,7 @@ public class SimulatedWeatherService : IWeatherService
             Current = currentWeather,
             Hourly = hourlyForecasts,
             Daily = dailyForecasts,
-            PopularCities = PresetCities.Keys.Take(9).ToList()
+            PopularCities = PresetCities.Keys.Take(12).ToList()
         };
 
         return Task.FromResult(report);
