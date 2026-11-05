@@ -291,6 +291,89 @@ main {
 .radar-card {
     position: relative;
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Modo Pantalla Completa del Radar Doppler */
+.radar-card.is-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    z-index: 99999 !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: none !important;
+}
+
+.radar-card.is-fullscreen .radar-map-wrapper {
+    flex-grow: 1 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+.radar-card.is-fullscreen .radar-header {
+    background: #ffffff;
+    z-index: 1000;
+    padding: 0.85rem 1.25rem;
+}
+
+.radar-card.is-fullscreen .radar-controls-bar {
+    background: #ffffff;
+    z-index: 1000;
+    padding: 0.65rem 1.25rem;
+}
+
+/* Soporte Nativo Browser Fullscreen API */
+.radar-card:fullscreen,
+.radar-card:-webkit-full-screen,
+.radar-card:-moz-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.radar-card:fullscreen .radar-map-wrapper,
+.radar-card:-webkit-full-screen .radar-map-wrapper,
+.radar-card:-moz-full-screen .radar-map-wrapper {
+    flex-grow: 1 !important;
+    height: 100% !important;
+}
+
+/* Botón Flotante Pantalla Completa en el Mapa */
+.radar-floating-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 520;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: #1e293b;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.radar-floating-btn:hover {
+    background: #ffffff;
+    transform: scale(1.08);
+    color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
 .radar-header {

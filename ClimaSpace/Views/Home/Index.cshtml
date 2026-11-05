@@ -76,6 +76,10 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
+                        <!-- Botón Pantalla Completa -->
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-semibold" id="btnRadarFullscreen" onclick="toggleRadarFullscreen()" title="Ver radar a pantalla completa">
+                            <i class="bi bi-arrows-fullscreen me-1" id="btnFullscreenIcon"></i><span id="btnFullscreenText">Pantalla Completa</span>
+                        </button>
                         <!-- Botón Escáner Doppler -->
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRadarSweep" onclick="toggleRadarSweep()">
                             <i class="bi bi-bullseye me-1"></i>Barrido Doppler
@@ -86,6 +90,10 @@
                 <!-- Visor del Mapa Leaflet -->
                 <div class="radar-map-wrapper">
                     <div id="weatherRadarMap"></div>
+                    <!-- Botón Flotante Pantalla Completa Directo -->
+                    <button type="button" class="radar-floating-btn shadow-sm" id="btnFloatingFullscreen" onclick="toggleRadarFullscreen()" title="Pantalla Completa">
+                        <i class="bi bi-arrows-fullscreen" id="floatingFullscreenIcon"></i>
+                    </button>
                     <!-- Overlay de Barrido Giratorio -->
                     <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
                     <!-- HUD de Detección de Tormentas Severas del Barrido Doppler -->
@@ -127,8 +135,8 @@
                             <span class="radar-color-pill c-red" onclick="setManualDopplerLevel('red')" title="Ver eco Rojo: Tormenta (45-55 dBZ)">
                                 🟥 Rojo
                             </span>
-                            <span class="radar-color-pill c-purple" onclick="setManualDopplerLevel('purple')" title="Ver eco Púrpura: Granizo (>55 dBZ)">
-                                🟪 Púrpura
+                            <span class="radar-color-pill c-purple" onclick="setManualDopplerLevel('purple')" title="Ver eco de Tormenta Severa / Granizo (>55 dBZ)">
+                                🟪 Granizo (>55 dBZ)
                             </span>
                             <span class="radar-color-pill bg-primary" onclick="setManualDopplerLevel('auto')" title="Restablecer a Clima Real en Vivo">
                                 <i class="bi bi-arrow-repeat me-1"></i>Auto
@@ -555,7 +563,7 @@
                     </div>
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center justify-content-between mb-1">
-                            <strong class="fs-6" style="color: #7c3aed;">🟪 Púrpura — Tormenta Severa / Granizo</strong>
+                            <strong class="fs-6" style="color: #7c3aed;">🟪 Tormenta Severa / Granizo Extremo</strong>
                             <span class="badge border" style="background-color: #ede9fe; color: #6d28d9; border-color: #c4b5fd !important;">&gt; 55 dBZ | &gt; 30 mm/h</span>
                         </div>
                         <p class="text-muted small mb-0">Fenómeno meteorológico severo: núcleo de tormenta convectiva profunda de alta energía, probabilidad alta de caída de granizo y vientos destructivos.</p>

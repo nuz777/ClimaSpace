@@ -7,7 +7,8 @@ let currentProvider = window.currentProvider || 'live';
 let currentCityName = (window.cityCoordinates && window.cityCoordinates.name) || 'Bogotá';
 
 let radarMap = null;
-let radarTileLayer = null;
+let radarTileLayers = [null, null];
+let activeBufferIndex = 0;
 let radarFrames = [];
 let currentRadarIndex = 0;
 let radarAnimationTimer = null;
@@ -371,6 +372,8 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
     if (radarMap) {
         radarMap.remove();
         radarMap = null;
+        radarTileLayers = [null, null];
+        activeBufferIndex = 0;
     }
 
     // Configuración robusta de Leaflet
@@ -694,12 +697,12 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
             weight: 2.5
         }).bindTooltip(`🟥 <strong>Eco Doppler Rojo (50 dBZ):</strong> Tormenta y Lluvia Torrencial (15 - 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
-    // 5. NIVEL PÚRPURA: Tormenta Severa con Granizo (> 55 dBZ)
+    // 5. NIVEL SEVERO / GRANIZO (> 55 dBZ)
     else if (level === 'purple') {
         if (badge) {
             badge.className = "badge text-white rounded-pill px-3 py-1 small fw-bold shadow-sm";
             badge.style.backgroundColor = '#7c3aed';
-            badge.innerHTML = `<i class="bi bi-lightning-charge-fill me-1"></i>🟪 Eco Púrpura: Tormenta Severa / Granizo (> 55 dBZ)`;
+            badge.innerHTML = `<i class="bi bi-lightning-charge-fill me-1"></i>🟪 Eco Severo: Tormenta Extrema / Granizo (> 55 dBZ)`;
         }
 
         L.circle([lat, lon], { pane: 'dopplerEchoPane', radius: 52000, color: '#059669', fillColor: '#10b981', fillOpacity: 0.40, weight: 2 }).addTo(rainEchoGroup);
@@ -713,7 +716,7 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
             fillColor: '#8b5cf6',
             fillOpacity: 0.92,
             weight: 3
-        }).bindTooltip(`🟪 <strong>Eco Doppler Púrpura (60 dBZ):</strong> Núcleo de Granizo / Turbonada (> 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
+        }).bindTooltip(`🟪 <strong>Alerta Doppler (60 dBZ):</strong> Tormenta Severa / Núcleo de Granizo (> 30 mm/h)`, { direction: 'top' }).addTo(rainEchoGroup);
     }
     // SIN PRECIPITACIÓN LOCAL
     else {
@@ -729,9 +732,52 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
 }
 
 // --------------------------------------------------------------------------
-// Graficación Permanente de Ecos Regionales en Colombia y Zonas Severas
+// Catálogo Extenso de Sistemas Meteorológicos Doppler Regionales
+// (Mar Caribe, Océano Pacífico, Valles Andinos, Llanos y Amazonía)
 // --------------------------------------------------------------------------
-function renderRegionalColombiaEchoes() {
+const REGIONAL_DOPPLER_SYSTEMS = [
+    // 1. Mar Caribe y Zonas Costeras
+    { name: "Frente Marítimo San Andrés y Providencia", baseLat: 13.05, baseLon: -81.55, levels: ['green', 'yellow', 'orange'], baseRadius: 42000, phase: 0, lifeFrames: 8, driftLat: 0.012, driftLon: -0.018 },
+    { name: "Golfo de Urabá / Turbo (Caribe Sur)", baseLat: 8.20, baseLon: -76.80, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 38000, phase: 3, lifeFrames: 9, driftLat: 0.010, driftLon: -0.015 },
+    { name: "Costa Caribe / Barranquilla & Cartagena", baseLat: 10.85, baseLon: -75.10, levels: ['green', 'yellow', 'orange'], baseRadius: 36000, phase: 6, lifeFrames: 8, driftLat: 0.012, driftLon: -0.016 },
+    { name: "Sierra Nevada de Santa Marta (Orográfico)", baseLat: 10.85, baseLon: -73.75, levels: ['green', 'yellow'], baseRadius: 34000, phase: 2, lifeFrames: 8, driftLat: 0.005, driftLon: -0.010 },
+    { name: "Alta Guajira / Cabo de la Vela", baseLat: 12.15, baseLon: -72.10, levels: ['green'], baseRadius: 28000, phase: 8, lifeFrames: 6, driftLat: 0.015, driftLon: -0.020 },
+    { name: "Golfo de Morrosquillo / Coveñas & San Bernardo", baseLat: 9.55, baseLon: -75.75, levels: ['green', 'yellow'], baseRadius: 30000, phase: 4, lifeFrames: 8, driftLat: 0.010, driftLon: -0.014 },
+    { name: "Mar Caribe Abierto / Corriente Norte", baseLat: 14.50, baseLon: -76.50, levels: ['green', 'yellow', 'orange'], baseRadius: 48000, phase: 9, lifeFrames: 9, driftLat: 0.018, driftLon: -0.022 },
+
+    // 2. Océano Pacífico y Chocó Biogeográfico
+    { name: "Chocó Biogeográfico / Bahía Solano & Nuquí", baseLat: 6.05, baseLon: -77.30, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 55000, phase: 1, lifeFrames: 10, driftLat: 0.012, driftLon: -0.010 },
+    { name: "Cuenca Pacífica / Río San Juan", baseLat: 5.45, baseLon: -76.85, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 48000, phase: 5, lifeFrames: 9, driftLat: 0.010, driftLon: -0.010 },
+    { name: "Bahía de Buenaventura / Costa Central", baseLat: 3.88, baseLon: -77.15, levels: ['green', 'yellow', 'orange'], baseRadius: 40000, phase: 7, lifeFrames: 8, driftLat: 0.008, driftLon: -0.012 },
+    { name: "Ensenada de Tumaco / Pacífico Sur", baseLat: 1.82, baseLon: -78.80, levels: ['green', 'yellow'], baseRadius: 36000, phase: 10, lifeFrames: 7, driftLat: 0.010, driftLon: -0.010 },
+    { name: "Santuario Malpelo / Mar Abierto Pacífico", baseLat: 4.10, baseLon: -81.20, levels: ['green', 'yellow'], baseRadius: 44000, phase: 2, lifeFrames: 8, driftLat: 0.015, driftLon: -0.015 },
+
+    // 3. Regiones Andinas y Valles Interandinos
+    { name: "Relámpago del Catatumbo (Tormenta Continua)", baseLat: 8.75, baseLon: -72.85, levels: ['green', 'yellow', 'orange', 'red', 'purple'], baseRadius: 46000, phase: 0, lifeFrames: 13, driftLat: 0.004, driftLon: -0.006 },
+    { name: "Valle de Aburrá / Medellín & Oriente", baseLat: 6.28, baseLon: -75.52, levels: ['green', 'yellow', 'orange'], baseRadius: 34000, phase: 4, lifeFrames: 8, driftLat: 0.006, driftLon: -0.008 },
+    { name: "Magdalena Medio / Barrancabermeja", baseLat: 7.15, baseLon: -73.85, levels: ['green', 'yellow', 'orange'], baseRadius: 38000, phase: 8, lifeFrames: 8, driftLat: 0.008, driftLon: -0.010 },
+    { name: "Cordillera Central / Eje Cafetero", baseLat: 4.95, baseLon: -75.60, levels: ['green', 'yellow'], baseRadius: 32000, phase: 6, lifeFrames: 7, driftLat: 0.005, driftLon: -0.008 },
+    { name: "Altiplano Cundiboyacense / Sabana", baseLat: 5.15, baseLon: -73.90, levels: ['green', 'yellow'], baseRadius: 32000, phase: 11, lifeFrames: 7, driftLat: 0.005, driftLon: -0.008 },
+    { name: "Macizo Colombiano / Cauca & Huila", baseLat: 2.15, baseLon: -76.60, levels: ['green', 'yellow'], baseRadius: 34000, phase: 3, lifeFrames: 8, driftLat: 0.006, driftLon: -0.008 },
+
+    // 4. Llanos Orientales y Amazonía
+    { name: "Piedemonte Llanero / Villavicencio", baseLat: 4.20, baseLon: -73.45, levels: ['green', 'yellow', 'orange'], baseRadius: 40000, phase: 2, lifeFrames: 8, driftLat: 0.008, driftLon: 0.012 },
+    { name: "Llanos del Meta & Casanare (Sabana)", baseLat: 5.30, baseLon: -71.80, levels: ['green', 'yellow'], baseRadius: 44000, phase: 7, lifeFrames: 8, driftLat: 0.010, driftLon: 0.015 },
+    { name: "Cuenca Amazónica / Caquetá & Putumayo", baseLat: 1.50, baseLon: -75.35, levels: ['green', 'yellow', 'orange'], baseRadius: 50000, phase: 5, lifeFrames: 9, driftLat: 0.008, driftLon: 0.010 },
+    { name: "Trapecio Amazónico / Leticia & Amazonas", baseLat: -4.10, baseLon: -69.95, levels: ['green', 'yellow'], baseRadius: 38000, phase: 9, lifeFrames: 7, driftLat: 0.008, driftLon: 0.010 },
+
+    // 5. Costas del Golfo e Internacionales
+    { name: "Mississippi / Costa del Golfo", baseLat: 31.50, baseLon: -89.80, levels: ['green', 'yellow', 'orange'], baseRadius: 44000, phase: 1, lifeFrames: 8, driftLat: 0.015, driftLon: 0.010 },
+    { name: "Texas / Frente de la Costa de Houston", baseLat: 29.40, baseLon: -94.90, levels: ['green', 'yellow'], baseRadius: 42000, phase: 5, lifeFrames: 8, driftLat: 0.012, driftLon: 0.015 }
+];
+
+/**
+ * Renderiza los ecos Doppler regionales.
+ * En modo estático muestra todos los sistemas con reflectividad plena.
+ * En modo animación (frameIndex no nulo) calcula el ciclo biológico de cada tormenta:
+ * aparecen, crecen a núcleos de lluvia, se desplazan con el viento y se disipan.
+ */
+function renderRegionalColombiaEchoes(frameIndex = null) {
     if (!radarMap) return;
 
     if (!regionalEchoGroup) {
@@ -739,103 +785,120 @@ function renderRegionalColombiaEchoes() {
     }
     regionalEchoGroup.clearLayers();
 
-    // 1. Frente de Llovizna y Tormenta Roja en la Costa Pacífica (Chocó - zona convectiva tropical)
-    L.circle([5.69, -76.65], {
-        pane: 'dopplerEchoPane',
-        radius: 65000,
-        color: '#059669',
-        fillColor: '#10b981',
-        fillOpacity: 0.45,
-        weight: 2
-    }).bindTooltip("🟩 <strong>Frente Doppler Verde:</strong> Lloviznas en la Cuenca Pacífica (18 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+    const totalFrames = (radarFrames && radarFrames.length > 0) ? radarFrames.length : 13;
+    const isAnimating = (frameIndex !== null && typeof frameIndex === 'number');
 
-    L.circle([5.85, -76.80], {
-        pane: 'dopplerEchoPane',
-        radius: 38000,
-        color: '#ca8a04',
-        fillColor: '#eab308',
-        fillOpacity: 0.50,
-        weight: 1.5
-    }).bindTooltip("🟨 <strong>Frente Doppler Amarillo:</strong> Lluvia moderada (28 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+    REGIONAL_DOPPLER_SYSTEMS.forEach(sys => {
+        let lat = sys.baseLat;
+        let lon = sys.baseLon;
+        let radius = sys.baseRadius;
+        let opacityMult = 1.0;
+        let activeLevels = sys.levels;
 
-    L.circle([5.69, -76.65], {
-        pane: 'dopplerEchoPane',
-        radius: 16000,
-        color: '#dc2626',
-        fillColor: '#ef4444',
-        fillOpacity: 0.72,
-        weight: 2
-    }).bindTooltip("🟥 <strong>Frente Convectivo del Chocó:</strong> Tormenta roja y lluvia torrencial (48-50 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+        // En reproducción animada: calcular ciclo de vida (aparece -> viaja -> se disipa)
+        if (isAnimating) {
+            const relFrame = (frameIndex - sys.phase + totalFrames) % totalFrames;
 
-    // 2. Relámpago del Catatumbo (Tormenta Eléctrica Continua - Núcleo Púrpura >55 dBZ y Rojo 50 dBZ)
-    L.circle([8.75, -72.85], {
-        pane: 'dopplerEchoPane',
-        radius: 46000,
-        color: '#059669',
-        fillColor: '#10b981',
-        fillOpacity: 0.40,
-        weight: 2
-    }).addTo(regionalEchoGroup);
+            // Si está fuera de su ciclo de vida en este fotograma, desaparece temporalmente
+            if (relFrame >= sys.lifeFrames && sys.lifeFrames < totalFrames) {
+                return;
+            }
 
-    L.circle([8.75, -72.85], {
-        pane: 'dopplerEchoPane',
-        radius: 30000,
-        color: '#ca8a04',
-        fillColor: '#eab308',
-        fillOpacity: 0.50,
-        weight: 2
-    }).addTo(regionalEchoGroup);
+            const progress = (sys.lifeFrames > 1) ? (relFrame / (sys.lifeFrames - 1)) : 0.5;
+            const intensity = Math.sin(progress * Math.PI);
 
-    L.circle([8.75, -72.85], {
-        pane: 'dopplerEchoPane',
-        radius: 20000,
-        color: '#ea580c',
-        fillColor: '#f97316',
-        fillOpacity: 0.60,
-        weight: 2
-    }).addTo(regionalEchoGroup);
+            // Si la reflectividad es ínfima, desaparece del radar
+            if (intensity < 0.12) return;
 
-    L.circle([8.75, -72.85], {
-        pane: 'dopplerEchoPane',
-        radius: 12000,
-        color: '#dc2626',
-        fillColor: '#ef4444',
-        fillOpacity: 0.75,
-        weight: 2
-    }).bindTooltip("🟥 <strong>Catatumbo:</strong> Tormenta Eléctrica Activa (50 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+            // Desplazamiento atmosférico por viento a lo largo de los fotogramas
+            lat += sys.driftLat * relFrame;
+            lon += sys.driftLon * relFrame;
 
-    L.circle([8.75, -72.85], {
-        pane: 'dopplerEchoPane',
-        radius: 6000,
-        color: '#7c3aed',
-        fillColor: '#8b5cf6',
-        fillOpacity: 0.92,
-        weight: 2.5
-    }).bindTooltip("🟪 <strong>Relámpago del Catatumbo:</strong> Núcleo Púrpura Severo continuo (>55 dBZ - Rayos y Granizo)", { direction: 'top' }).addTo(regionalEchoGroup);
+            // Modulación de radio y opacidad
+            radius = sys.baseRadius * (0.65 + 0.35 * intensity);
+            opacityMult = 0.30 + 0.70 * intensity;
 
-    // 3. Celdas de Llovizna Verde en la Sierra Nevada y Serranía
-    L.circle([10.75, -73.65], {
-        pane: 'dopplerEchoPane',
-        radius: 38000,
-        color: '#059669',
-        fillColor: '#10b981',
-        fillOpacity: 0.42,
-        weight: 2
-    }).bindTooltip("🟩 <strong>Eco Doppler Verde:</strong> Lloviznas orográficas en la Sierra Nevada (15 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+            // Niveles de color Doppler según la intensidad actual de la celda
+            if (intensity < 0.40) {
+                activeLevels = ['green'];
+            } else if (intensity < 0.65) {
+                activeLevels = sys.levels.filter(l => l === 'green' || l === 'yellow');
+            } else if (intensity < 0.85) {
+                activeLevels = sys.levels.filter(l => l === 'green' || l === 'yellow' || l === 'orange');
+            }
+        }
 
-    // 5. Sistema de Llovizna Verde en el Piedemonte Amazónico
-    L.circle([1.61, -75.61], {
-        pane: 'dopplerEchoPane',
-        radius: 52000,
-        color: '#059669',
-        fillColor: '#10b981',
-        fillOpacity: 0.40,
-        weight: 2
-    }).bindTooltip("🟩 <strong>Eco Doppler Verde:</strong> Nubosidad con llovizna en la Amazonía (14 dBZ)", { direction: 'top' }).addTo(regionalEchoGroup);
+        // Graficar anillos métricos concéntricos Doppler
+        drawDopplerConcentricRings(lat, lon, radius, activeLevels, opacityMult, sys.name);
+    });
+}
+
+function drawDopplerConcentricRings(lat, lon, baseRadius, levels, opacityMult, systemName) {
+    if (!regionalEchoGroup) return;
+
+    // 1. Capa Verde: Llovizna y Lluvia Ligera (15-25 dBZ)
+    if (levels.includes('green')) {
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: baseRadius,
+            color: '#059669',
+            fillColor: '#10b981',
+            fillOpacity: Math.min(0.55, 0.42 * opacityMult),
+            weight: 2
+        }).bindTooltip(`🟩 <strong>${systemName}:</strong> Llovizna y nubosidad activa (18 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+    }
+
+    // 2. Capa Amarilla: Lluvia Moderada (25-35 dBZ)
+    if (levels.includes('yellow')) {
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: Math.round(baseRadius * 0.65),
+            color: '#ca8a04',
+            fillColor: '#eab308',
+            fillOpacity: Math.min(0.65, 0.50 * opacityMult),
+            weight: 1.8
+        }).bindTooltip(`🟨 <strong>${systemName}:</strong> Lluvia moderada (30 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+    }
+
+    // 3. Capa Naranja: Lluvia Fuerte (35-45 dBZ)
+    if (levels.includes('orange')) {
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: Math.round(baseRadius * 0.42),
+            color: '#ea580c',
+            fillColor: '#f97316',
+            fillOpacity: Math.min(0.72, 0.60 * opacityMult),
+            weight: 2
+        }).bindTooltip(`🟧 <strong>${systemName}:</strong> Lluvia fuerte / Aguacero (40 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+    }
+
+    // 4. Capa Roja: Tormenta Eléctrica (45-55 dBZ)
+    if (levels.includes('red')) {
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: Math.round(baseRadius * 0.25),
+            color: '#dc2626',
+            fillColor: '#ef4444',
+            fillOpacity: Math.min(0.85, 0.75 * opacityMult),
+            weight: 2.2
+        }).bindTooltip(`🟥 <strong>${systemName}:</strong> Tormenta eléctrica activa (50 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+    }
+
+    // 5. Capa Severa / Granizo: Núcleo Convectivo Extremo (>55 dBZ)
+    if (levels.includes('purple')) {
+        L.circle([lat, lon], {
+            pane: 'dopplerEchoPane',
+            radius: Math.round(baseRadius * 0.14),
+            color: '#7c3aed',
+            fillColor: '#8b5cf6',
+            fillOpacity: Math.min(0.95, 0.90 * opacityMult),
+            weight: 2.5
+        }).bindTooltip(`🟪 <strong>${systemName}:</strong> Tormenta severa / Granizo continuo (>55 dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
+    }
 }
 
 // --------------------------------------------------------------------------
-// 6. Carga de Fotogramas del Radar Doppler (RainViewer API con Paleta Universal 1)
+// 6. Carga de Fotogramas del Radar Doppler (RainViewer con Doble Búfer para Redes 4G)
 // --------------------------------------------------------------------------
 async function loadRainViewerRadarLayers() {
     const timeDisplay = document.getElementById('radarFrameTime');
@@ -856,7 +919,7 @@ async function loadRainViewerRadarLayers() {
         }
 
         if (frames.length === 0) {
-            if (timeDisplay) timeDisplay.textContent = "Radar activo (Sin ecos)";
+            if (timeDisplay) timeDisplay.textContent = "Radar activo (Modo Base)";
             return;
         }
 
@@ -864,33 +927,43 @@ async function loadRainViewerRadarLayers() {
         currentRadarIndex = radarFrames.length - 1;
 
         const initialPath = radarFrames[currentRadarIndex].path;
-        // Paleta 1 = Universal Doppler (Verde -> Amarillo -> Naranja -> Rojo -> Púrpura)
         const initialUrl = `${radarHost}${initialPath}/256/{z}/{x}/{y}/1/1_1.png`;
 
-        if (radarTileLayer) {
-            radarMap.removeLayer(radarTileLayer);
-        }
+        // Limpiar capas previas si existen
+        if (radarTileLayers[0] && radarMap.hasLayer(radarTileLayers[0])) radarMap.removeLayer(radarTileLayers[0]);
+        if (radarTileLayers[1] && radarMap.hasLayer(radarTileLayers[1])) radarMap.removeLayer(radarTileLayers[1]);
 
-        radarTileLayer = L.tileLayer(initialUrl, {
+        // Doble búfer para 4G: dos capas alternantes para evitar parpadeos en blanco
+        radarTileLayers[0] = L.tileLayer(initialUrl, {
             opacity: 0.85,
             zIndex: 100,
             minNativeZoom: 1,
             minZoom: 2,
-            maxNativeZoom: 7, // Cero "Zoom level not supported"
+            maxNativeZoom: 7,
             maxZoom: 18,
             tileSize: 256,
-            keepBuffer: 8,
-            updateWhenZooming: false,
-            updateWhenIdle: true
+            keepBuffer: 12
         }).addTo(radarMap);
 
+        radarTileLayers[1] = L.tileLayer('', {
+            opacity: 0,
+            zIndex: 99,
+            minNativeZoom: 1,
+            minZoom: 2,
+            maxNativeZoom: 7,
+            maxZoom: 18,
+            tileSize: 256,
+            keepBuffer: 12
+        }).addTo(radarMap);
+
+        activeBufferIndex = 0;
         updateRadarTimeDisplay(radarFrames[currentRadarIndex].time);
 
         if (playBtn) playBtn.disabled = false;
 
     } catch (err) {
         console.warn("RainViewer no disponible:", err);
-        if (timeDisplay) timeDisplay.textContent = "Radar activo (Modo Base)";
+        if (timeDisplay) timeDisplay.textContent = "Radar activo (Modo Local)";
     }
 }
 
@@ -904,15 +977,39 @@ function updateRadarTimeDisplay(unixTimestamp) {
 }
 
 function showRadarFrame(index) {
-    if (!radarTileLayer || radarFrames.length === 0) return;
+    if (radarFrames.length === 0) return;
 
     currentRadarIndex = index;
     const frame = radarFrames[index];
-    // Paleta 1 = Universal Doppler
     const newUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/1/1_1.png`;
 
-    radarTileLayer.setUrl(newUrl);
+    // 1. Doble búfer para conexiones 4G móviles:
+    // Cargar en la capa inactiva y alternar opacidades para que nunca quede el mapa en blanco
+    const nextIndex = 1 - activeBufferIndex;
+    const nextLayer = radarTileLayers[nextIndex];
+    const currentLayer = radarTileLayers[activeBufferIndex];
+
+    if (nextLayer && currentLayer) {
+        nextLayer.setUrl(newUrl);
+        nextLayer.setOpacity(0.85);
+        setTimeout(() => {
+            if (currentLayer && activeBufferIndex !== nextIndex) {
+                currentLayer.setOpacity(0);
+            }
+        }, 320);
+        activeBufferIndex = nextIndex;
+    } else if (radarTileLayers[0]) {
+        radarTileLayers[0].setUrl(newUrl);
+    }
+
     updateRadarTimeDisplay(frame.time);
+
+    // 2. Animar las manchas Doppler para que aparezcan, se muevan y desaparezcan en ciclo
+    renderRegionalColombiaEchoes(index);
+
+    if (isDopplerSweepActive) {
+        scanDopplerForSevereStorms();
+    }
 }
 
 function toggleRadarAnimation() {
@@ -933,10 +1030,11 @@ function startRadarAnimation() {
         playBtn.classList.replace('btn-primary', 'btn-outline-primary');
     }
 
+    // Intervalo de 1150 ms: perfecto para streaming continuo en redes móviles 4G
     radarAnimationTimer = setInterval(() => {
         currentRadarIndex = (currentRadarIndex + 1) % radarFrames.length;
         showRadarFrame(currentRadarIndex);
-    }, 700);
+    }, 1150);
 }
 
 function stopRadarAnimation() {
@@ -947,6 +1045,12 @@ function stopRadarAnimation() {
     if (playBtn) {
         playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Reproducir';
         playBtn.classList.replace('btn-outline-primary', 'btn-primary');
+    }
+
+    // Restablecer todas las manchas Doppler al estado en vivo presente
+    renderRegionalColombiaEchoes(null);
+    if (isDopplerSweepActive) {
+        scanDopplerForSevereStorms();
     }
 }
 
@@ -1073,19 +1177,19 @@ function scanDopplerForSevereStorms() {
     const purpleDetections = detectedStorms.filter(s => s.type === 'purple');
     const redDetections = detectedStorms.filter(s => s.type === 'red');
 
-    // 1. Caso: Al menos una tormenta púrpura detectada por el barrido
+    // 1. Caso: Al menos una tormenta severa con granizo detectada por el barrido
     if (purpleDetections.length > 0) {
         if (sweepOverlay) {
             sweepOverlay.classList.remove('alert-red');
             sweepOverlay.classList.add('alert-purple');
         }
         if (hudPulse) hudPulse.className = "hud-status-pulse pulse-purple";
-        if (hudTitle) hudTitle.textContent = "⚡ ALERTA: TORMENTA SEVERA PÚRPURA DETECTADA";
+        if (hudTitle) hudTitle.textContent = "⚡ ALERTA: TORMENTA SEVERA / GRANIZO DETECTADO";
         if (hudBody) {
             hudBody.innerHTML = `
                 <div class="d-flex align-items-center justify-content-between mb-1">
                     <span class="badge text-white px-2 py-1" style="background:#7c3aed;">
-                        <i class="bi bi-lightning-charge-fill me-1"></i>🟪 ${purpleDetections.length} Núcleo(s) Púrpura (>55 dBZ)
+                        <i class="bi bi-lightning-charge-fill me-1"></i>🟪 ${purpleDetections.length} Núcleo(s) Severo(s) (>55 dBZ)
                     </span>
                     <span class="badge bg-danger text-white">${redDetections.length > 0 ? `+${redDetections.length} Rojas` : 'Extrema'}</span>
                 </div>
@@ -1098,7 +1202,7 @@ function scanDopplerForSevereStorms() {
             `;
         }
     }
-    // 2. Caso: Tormentas rojas detectadas (sin púrpura)
+    // 2. Caso: Tormentas rojas detectadas (sin granizo severo)
     else if (redDetections.length > 0) {
         if (sweepOverlay) {
             sweepOverlay.classList.remove('alert-purple');
@@ -1123,7 +1227,7 @@ function scanDopplerForSevereStorms() {
             `;
         }
     }
-    // 3. Caso: Sin tormentas rojas ni púrpuras en el rango
+    // 3. Caso: Sin tormentas rojas ni núcleos de granizo en el rango
     else {
         if (sweepOverlay) {
             sweepOverlay.classList.remove('alert-red', 'alert-purple');
@@ -1133,7 +1237,7 @@ function scanDopplerForSevereStorms() {
         if (hudBody) {
             hudBody.innerHTML = `
                 <div class="text-white-50 small">
-                    <i class="bi bi-radar me-1 text-info"></i>Barrido 360° completado. Sin tormentas rojas ni púrpuras detectadas en el cuadrante (&lt;45 dBZ).
+                    <i class="bi bi-radar me-1 text-info"></i>Barrido 360° completado. Sin tormentas severas ni núcleos de granizo en el cuadrante (&lt;45 dBZ).
                 </div>
             `;
         }
@@ -1156,11 +1260,11 @@ function scanDopplerForSevereStorms() {
         blipMarker.bindTooltip(`
             <div class="p-1 text-start" style="min-width: 170px;">
                 <div class="fw-bold ${storm.type === 'purple' ? 'text-primary' : 'text-danger'} mb-1">
-                    ${storm.type === 'purple' ? '🟪' : '🟥'} ${storm.name}
+                    ${storm.type === 'purple' ? '🟪' : '🟥'} ${storm.name} ${storm.type === 'purple' ? '(Alerta de Granizo / Severo)' : '(Tormenta Eléctrica)'}
                 </div>
                 <div class="small text-dark mb-1"><strong>Reflectividad:</strong> <span class="badge ${storm.type === 'purple' ? 'bg-purple text-white' : 'bg-danger text-white'}" style="${storm.type === 'purple' ? 'background:#7c3aed;' : ''}">${storm.dbz}</span></div>
                 <div class="small text-secondary mb-1"><strong>Condición:</strong> ${storm.hazard}</div>
-                <div class="small text-success fw-semibold"><i class="bi bi-bullseye me-1"></i>Blanco detectado por Barrido Doppler</div>
+                <div class="small text-success fw-semibold"><i class="bi bi-bullseye me-1"></i>Blanco fijado por Barrido Doppler</div>
             </div>
         `, { 
             direction: 'top', 
@@ -1168,6 +1272,107 @@ function scanDopplerForSevereStorms() {
             className: 'shadow-lg border rounded-3 p-1'
         });
     });
+}
+
+// --------------------------------------------------------------------------
+// 7. Modo Pantalla Completa del Radar Doppler
+// --------------------------------------------------------------------------
+function toggleRadarFullscreen() {
+    const radarCard = document.querySelector('.radar-card');
+    const btnIcon = document.getElementById('btnFullscreenIcon');
+    const btnText = document.getElementById('btnFullscreenText');
+    const floatingIcon = document.getElementById('floatingFullscreenIcon');
+
+    if (!radarCard) return;
+
+    const isFs = document.fullscreenElement || 
+                 document.webkitFullscreenElement || 
+                 document.mozFullScreenElement || 
+                 document.msFullscreenElement || 
+                 radarCard.classList.contains('is-fullscreen');
+
+    if (!isFs) {
+        // Solicitar pantalla completa nativa o fallback CSS
+        const reqFs = radarCard.requestFullscreen || 
+                      radarCard.webkitRequestFullscreen || 
+                      radarCard.mozRequestFullScreen || 
+                      radarCard.msRequestFullscreen;
+
+        if (reqFs) {
+            reqFs.call(radarCard).catch(() => {
+                radarCard.classList.add('is-fullscreen');
+            });
+        } else {
+            radarCard.classList.add('is-fullscreen');
+        }
+
+        radarCard.classList.add('is-fullscreen');
+        if (btnText) btnText.textContent = "Salir Pantalla Completa";
+        if (btnIcon) {
+            btnIcon.classList.remove('bi-arrows-fullscreen');
+            btnIcon.classList.add('bi-fullscreen-exit');
+        }
+        if (floatingIcon) {
+            floatingIcon.classList.remove('bi-arrows-fullscreen');
+            floatingIcon.classList.add('bi-fullscreen-exit');
+        }
+    } else {
+        // Salir de pantalla completa
+        const exitFs = document.exitFullscreen || 
+                       document.webkitExitFullscreen || 
+                       document.mozCancelFullScreen || 
+                       document.msExitFullscreen;
+
+        if (exitFs && (document.fullscreenElement || document.webkitFullscreenElement)) {
+            exitFs.call(document).catch(() => {});
+        }
+
+        radarCard.classList.remove('is-fullscreen');
+        if (btnText) btnText.textContent = "Pantalla Completa";
+        if (btnIcon) {
+            btnIcon.classList.remove('bi-fullscreen-exit');
+            btnIcon.classList.add('bi-arrows-fullscreen');
+        }
+        if (floatingIcon) {
+            floatingIcon.classList.remove('bi-fullscreen-exit');
+            floatingIcon.classList.add('bi-arrows-fullscreen');
+        }
+    }
+
+    // Recalcular tamaño de Leaflet para llenar toda la pantalla
+    if (radarMap) {
+        setTimeout(() => radarMap.invalidateSize(), 80);
+        setTimeout(() => radarMap.invalidateSize(), 300);
+    }
+}
+
+document.addEventListener('fullscreenchange', handleFullscreenChangeEvent);
+document.addEventListener('webkitfullscreenchange', handleFullscreenChangeEvent);
+document.addEventListener('mozfullscreenchange', handleFullscreenChangeEvent);
+document.addEventListener('MSFullscreenChange', handleFullscreenChangeEvent);
+
+function handleFullscreenChangeEvent() {
+    const radarCard = document.querySelector('.radar-card');
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    const btnIcon = document.getElementById('btnFullscreenIcon');
+    const btnText = document.getElementById('btnFullscreenText');
+    const floatingIcon = document.getElementById('floatingFullscreenIcon');
+
+    if (!isFs && radarCard) {
+        radarCard.classList.remove('is-fullscreen');
+        if (btnText) btnText.textContent = "Pantalla Completa";
+        if (btnIcon) {
+            btnIcon.classList.remove('bi-fullscreen-exit');
+            btnIcon.classList.add('bi-arrows-fullscreen');
+        }
+        if (floatingIcon) {
+            floatingIcon.classList.remove('bi-fullscreen-exit');
+            floatingIcon.classList.add('bi-arrows-fullscreen');
+        }
+    }
+    if (radarMap) {
+        setTimeout(() => radarMap.invalidateSize(), 150);
+    }
 }
 
 // --------------------------------------------------------------------------
