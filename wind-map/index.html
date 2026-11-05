@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WindMap | Mapa de Viento Animado en Tiempo Real (MSN & Windy Style)</title>
+  <meta name="description" content="Visualización interactiva y animada del viento en tiempo real y pronóstico a 7 días utilizando Leaflet, Open-Meteo API y simulación de partículas sobre Canvas.">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <!-- Local Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Top Navigation Header -->
+    <header id="top-bar" class="glass-panel">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <i class="bi bi-wind"></i>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">Wind<span>Map</span></h1>
+          <span class="brand-subtitle">Viento en tiempo real</span>
+        </div>
+      </div>
+
+      <!-- City Geocoding Search Bar -->
+      <div class="search-wrapper">
+        <div class="search-input-box">
+          <i class="bi bi-search search-icon"></i>
+          <input 
+            type="text" 
+            id="city-search" 
+            placeholder="Buscar ciudad (ej. Madrid, Bogotá, Miami, Tokio)..." 
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="btn-clear-search" class="icon-btn-micro hidden" title="Limpiar búsqueda">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        <div id="search-results" class="search-dropdown hidden"></div>
+      </div>
+
+      <!-- Header Action Controls -->
+      <div class="header-actions">
+        <!-- Wind Particle Toggle Checkbox -->
+        <label class="toggle-control" title="Activar o desactivar las partículas animadas de viento">
+          <input type="checkbox" id="toggle-particles" checked>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label"><i class="bi bi-water"></i> Animación de viento</span>
+        </label>
+
+        <!-- Basemap Selector Dropdown -->
+        <div class="select-wrapper">
+          <select id="layer-select" title="Seleccionar capa base del mapa">
+            <option value="carto-dark" selected>🌙 CARTO Oscuro</option>
+            <option value="esri-satellite">🛰️ Satélite Esri</option>
+            <option value="osm-standard">🗺️ OpenStreetMap</option>
+          </select>
+        </div>
+
+        <!-- Utility Buttons -->
+        <button id="btn-locate" class="btn-icon" title="Centrar en mi ubicación actual">
+          <i class="bi bi-geo-alt"></i>
+        </button>
+
+        <button id="btn-fullscreen" class="btn-icon" title="Pantalla completa (F)">
+          <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+
+        <button id="btn-info" class="btn-icon" title="Información y ayuda">
+          <i class="bi bi-question-circle"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Map & Canvas Viewport -->
+    <main id="map-viewport">
+      <div id="map"></div>
+      <canvas id="particle-canvas"></canvas>
+
+      <!-- Status Pill Indicator -->
+      <div id="status-pill" class="status-pill">
+        <span class="status-dot"></span>
+        <span class="status-text">Conectando con Open-Meteo...</span>
+      </div>
+
+      <!-- Floating Inspection Tooltip -->
+      <div id="cursor-tooltip" class="floating-tooltip hidden">
+        <button id="btn-close-tooltip" class="tooltip-close" title="Cerrar"><i class="bi bi-x"></i></button>
+        <div class="tooltip-header">
+          <span class="tooltip-title"><i class="bi bi-geo"></i> Punto Seleccionado</span>
+          <span class="tooltip-coords" id="tooltip-coords">--°, --°</span>
+        </div>
+        <div class="tooltip-body">
+          <div class="speed-box">
+            <span class="speed-value" id="tooltip-speed">--</span>
+            <span class="speed-unit">km/h</span>
+          </div>
+          <div class="direction-box">
+            <div class="wind-arrow-wrapper">
+              <i class="bi bi-arrow-up wind-arrow" id="tooltip-arrow"></i>
+            </div>
+            <div class="direction-details">
+              <span class="direction-cardinal" id="tooltip-cardinal">--</span>
+              <span class="direction-degrees" id="tooltip-degrees">--°</span>
+            </div>
+          </div>
+        </div>
+        <div class="tooltip-footer">
+          <span id="tooltip-time">--</span>
+          <span class="tooltip-tag" id="tooltip-scale">--</span>
+        </div>
+      </div>
+
+      <!-- Floating Zoom Controls -->
+      <div class="floating-zoom-controls">
+        <button id="btn-zoom-in" class="btn-float" title="Acercar mapa (+)">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button id="btn-zoom-out" class="btn-float" title="Alejar mapa (−)">
+          <i class="bi bi-dash-lg"></i>
+        </button>
+      </div>
+
+      <!-- MSN Color Ramp Legend -->
+      <div id="color-legend" class="color-legend glass-panel">
+        <div class="legend-header">
+          <span class="legend-title"><i class="bi bi-speedometer2"></i> Velocidad del viento</span>
+          <span class="legend-unit">km/h</span>
+        </div>
+        <div class="legend-bar-container">
+          <div class="legend-bar"></div>
+          <div class="legend-ticks">
+            <span>0</span>
+            <span>10</span>
+            <span>20</span>
+            <span>35</span>
+            <span>55</span>
+            <span>70</span>
+            <span>100+</span>
+          </div>
+        </div>
+        <div class="legend-categories">
+          <span style="color:#60a5fa">Brisa</span>
+          <span style="color:#22d3ee">Suave</span>
+          <span style="color:#34d399">Moderado</span>
+          <span style="color:#facc15">Fuerte</span>
+          <span style="color:#fb923c">Muy fuerte</span>
+          <span style="color:#f87171">Temporal</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Timeline Player Bar -->
+    <footer id="timeline-bar" class="glass-panel">
+      <div class="timeline-top-row">
+        <!-- Play / Navigation controls -->
+        <div class="playback-controls">
+          <button id="btn-prev-hour" class="btn-player" title="Retroceder 1 hora (←)">
+            <i class="bi bi-skip-backward-fill"></i>
+          </button>
+          <button id="btn-play" class="btn-player btn-player-primary" title="Reproducir / Pausar (Espacio)">
+            <i class="bi bi-play-fill" id="play-icon"></i>
+          </button>
+          <button id="btn-next-hour" class="btn-player" title="Avanzar 1 hora (→)">
+            <i class="bi bi-skip-forward-fill"></i>
+          </button>
+          <button id="btn-now" class="btn-player-text" title="Volver al tiempo actual">
+            AHORA
+          </button>
+        </div>
+
+        <!-- Formatted Timestamp Display -->
+        <div class="time-readout">
+          <i class="bi bi-clock-history"></i>
+          <span id="time-display-primary">Cargando pronóstico...</span>
+          <span id="time-display-relative" class="time-badge">Ahora</span>
+        </div>
+
+        <!-- Playback Speed Multiplier -->
+        <div class="playback-speed">
+          <span class="speed-label">Velocidad:</span>
+          <button class="btn-speed active" data-speed="1">1x</button>
+          <button class="btn-speed" data-speed="2">2x</button>
+          <button class="btn-speed" data-speed="4">4x</button>
+        </div>
+      </div>
+
+      <!-- Quick Day Selector Tabs (7 Days) -->
+      <div class="timeline-day-tabs" id="day-tabs-container">
+        <!-- Dynamically populated by JS (Hoy, D+1, D+2, ... D+6) -->
+      </div>
+
+      <!-- Timeline Range Scrubber -->
+      <div class="timeline-scrubber-wrapper">
+        <input 
+          type="range" 
+          id="timeline-slider" 
+          min="0" 
+          max="167" 
+          value="0" 
+          step="1"
+          title="Arrastra para cambiar la hora del pronóstico (0 a 167 horas)"
+        >
+        <div class="slider-progress-fill" id="slider-fill"></div>
+      </div>
+    </footer>
+
+    <!-- Info / Help Modal -->
+    <div id="info-modal" class="modal-overlay hidden">
+      <div class="modal-card glass-panel">
+        <div class="modal-header">
+          <h2><i class="bi bi-wind"></i> Acerca de WindMap</h2>
+          <button id="btn-close-modal" class="btn-icon"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-content">
+          <p><strong>WindMap</strong> es una aplicación web interactiva que simula el flujo del viento en tiempo real e interactúa con un modelo de pronóstico global a 7 días.</p>
+          
+          <h3><i class="bi bi-cpu"></i> Características Técnicas</h3>
+          <ul>
+            <li><strong>Datos meteorológicos:</strong> Proporcionados por la API libre de <em>Open-Meteo</em> (variables de velocidad y dirección del viento a 10m de altura, interpolación bilineal de vectores <em>U</em> y <em>V</em>).</li>
+            <li><strong>Motor gráfico:</strong> Miles de partículas renderizadas en tiempo real con <code>HTML5 &lt;canvas&gt;</code> y <code>requestAnimationFrame</code>. Estelas fluidas con desvanecimiento de persistencia.</li>
+            <li><strong>Escala cromática MSN:</strong> Azul (0-10), Turquesa (10-20), Verde (20-35), Amarillo (35-55), Naranja (55-70) y Carmín/Rojo (70-100+ km/h).</li>
+            <li><strong>Caché inteligente:</strong> Almacena en memoria las consultas por cuadrícula de la vista actual para navegación ultrarrápida sin sobrecargar la red.</li>
+          </ul>
+
+          <h3><i class="bi bi-keyboard"></i> Atajos de Teclado</h3>
+          <div class="shortcuts-grid">
+            <span class="key-combo"><kbd>Espacio</kbd></span><span>Reproducir / Pausar animación temporal</span>
+            <span class="key-combo"><kbd>→</kbd> / <kbd>←</kbd></span><span>Avanzar / Retroceder 1 hora</span>
+            <span class="key-combo"><kbd>F</kbd></span><span>Alternar pantalla completa</span>
+            <span class="key-combo"><kbd>+</kbd> / <kbd>−</kbd></span><span>Acercar / Alejar mapa</span>
+            <span class="key-combo"><kbd>Esc</kbd></span><span>Cerrar ventanas y tooltip</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <span class="footer-note">Desarrollado con HTML5, CSS3, JavaScript puro y Leaflet.js</span>
+          <button id="btn-modal-ok" class="btn-primary">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Main Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
