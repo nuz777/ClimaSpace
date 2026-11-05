@@ -446,6 +446,11 @@ function updateSelectedCard(data) {
         elBadge.className = data.isLiveApi ? 'badge bg-success rounded-pill px-2 py-1 small' : 'badge bg-warning text-dark rounded-pill px-2 py-1 small';
         elBadge.textContent = data.isLiveApi ? 'En Vivo' : 'Simulado';
     }
+
+    if (isFullscreenCityCardCollapsed) {
+        const text = document.getElementById('textToggleFullscreenCard');
+        if (text) text.textContent = `Ver información (${data.city})`;
+    }
 }
 
 function updateHeroCard(data) {
@@ -1411,8 +1416,57 @@ function scanDopplerForSevereStorms() {
 }
 
 // --------------------------------------------------------------------------
-// 7. Modo Pantalla Completa del Radar Doppler
+// 7. Modo Pantalla Completa del Radar Doppler y Tarjeta de Ciudad Integrada
 // --------------------------------------------------------------------------
+let isFullscreenCityCardCollapsed = false;
+
+function setRadarCityCardFullscreen(isFullscreen) {
+    const card = document.getElementById('selectedCityCard');
+    const fsSlot = document.getElementById('radarFullscreenCitySlot');
+    const fsBody = document.getElementById('radarFullscreenCardBody');
+    const defaultSlot = document.getElementById('selectedCityCardDefaultSlot');
+
+    if (!card || !fsSlot || !defaultSlot || !fsBody) return;
+
+    if (isFullscreen) {
+        if (!fsBody.contains(card)) {
+            fsBody.appendChild(card);
+        }
+        fsSlot.classList.remove('d-none');
+
+        // Prevenir que los eventos de click o scroll sobre la tarjeta se propaguen al mapa Leaflet
+        if (window.L && L.DomEvent) {
+            L.DomEvent.disableClickPropagation(fsSlot);
+            L.DomEvent.disableScrollPropagation(fsSlot);
+        }
+    } else {
+        if (!defaultSlot.contains(card)) {
+            defaultSlot.appendChild(card);
+        }
+        fsSlot.classList.add('d-none');
+    }
+}
+
+function toggleFullscreenCityCard() {
+    const fsBody = document.getElementById('radarFullscreenCardBody');
+    const icon = document.getElementById('iconToggleFullscreenCard');
+    const text = document.getElementById('textToggleFullscreenCard');
+    const city = currentCityName || 'Ciudad';
+
+    if (!fsBody) return;
+
+    isFullscreenCityCardCollapsed = !isFullscreenCityCardCollapsed;
+    if (isFullscreenCityCardCollapsed) {
+        fsBody.classList.add('d-none');
+        if (icon) icon.className = 'bi bi-chevron-down me-1';
+        if (text) text.textContent = `Ver información (${city})`;
+    } else {
+        fsBody.classList.remove('d-none');
+        if (icon) icon.className = 'bi bi-chevron-up me-1';
+        if (text) text.textContent = 'Ocultar información';
+    }
+}
+
 function toggleRadarFullscreen() {
     const radarCard = document.querySelector('.radar-card');
     const btnIcon = document.getElementById('btnFullscreenIcon');
@@ -1421,13 +1475,16 @@ function toggleRadarFullscreen() {
 
     if (!radarCard) return;
 
-    const isFs = document.fullscreenElement || 
-                 document.webkitFullscreenElement || 
-                 document.mozFullScreenElement || 
-                 document.msFullscreenElement || 
-                 radarCard.classList.contains('is-fullscreen');
+    const isFs = !!(document.fullscreenElement || 
+                    document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || 
+                    document.msFullscreenElement || 
+                    radarCard.classList.contains('is-fullscreen'));
 
     if (!isFs) {
+        // Mover la tarjeta de la ciudad seleccionada al interior del radar en pantalla completa
+        setRadarCityCardFullscreen(true);
+
         // Solicitar pantalla completa nativa o fallback CSS
         const reqFs = radarCard.requestFullscreen || 
                       radarCard.webkitRequestFullscreen || 
@@ -1453,6 +1510,9 @@ function toggleRadarFullscreen() {
             floatingIcon.classList.add('bi-fullscreen-exit');
         }
     } else {
+        // Restaurar la tarjeta a su columna original
+        setRadarCityCardFullscreen(false);
+
         // Salir de pantalla completa
         const exitFs = document.exitFullscreen || 
                        document.webkitExitFullscreen || 
@@ -1475,10 +1535,16 @@ function toggleRadarFullscreen() {
         }
     }
 
-    // Recalcular tamaño de Leaflet para llenar toda la pantalla
+    // Recalcular tamaño de Leaflet para llenar toda la pantalla y redibujar canvas Doppler
     if (radarMap) {
-        setTimeout(() => radarMap.invalidateSize(), 80);
-        setTimeout(() => radarMap.invalidateSize(), 300);
+        setTimeout(() => {
+            radarMap.invalidateSize();
+            if (typeof renderDopplerCanvas === 'function') renderDopplerCanvas();
+        }, 80);
+        setTimeout(() => {
+            radarMap.invalidateSize();
+            if (typeof renderDopplerCanvas === 'function') renderDopplerCanvas();
+        }, 300);
     }
 }
 
@@ -1494,6 +1560,8 @@ function handleFullscreenChangeEvent() {
     const btnText = document.getElementById('btnFullscreenText');
     const floatingIcon = document.getElementById('floatingFullscreenIcon');
 
+    setRadarCityCardFullscreen(isFs);
+
     if (!isFs && radarCard) {
         radarCard.classList.remove('is-fullscreen');
         if (btnText) btnText.textContent = "Pantalla Completa";
@@ -1507,7 +1575,10 @@ function handleFullscreenChangeEvent() {
         }
     }
     if (radarMap) {
-        setTimeout(() => radarMap.invalidateSize(), 150);
+        setTimeout(() => {
+            radarMap.invalidateSize();
+            if (typeof renderDopplerCanvas === 'function') renderDopplerCanvas();
+        }, 150);
     }
 }
 

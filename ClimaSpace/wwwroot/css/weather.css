@@ -376,6 +376,60 @@ main {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
+/* ==========================================================================
+   Tarjeta de Ciudad Seleccionada dentro del Radar en Pantalla Completa
+   ========================================================================== */
+.radar-fullscreen-city-slot {
+    position: absolute;
+    top: 58px;
+    right: 14px;
+    width: 350px;
+    max-width: calc(100vw - 28px);
+    max-height: calc(100% - 74px);
+    z-index: 530;
+    pointer-events: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.radar-fullscreen-city-slot::-webkit-scrollbar {
+    width: 5px;
+}
+
+.radar-fullscreen-city-slot::-webkit-scrollbar-thumb {
+    background: rgba(37, 99, 235, 0.35);
+    border-radius: 4px;
+}
+
+.radar-fullscreen-city-slot .selected-city-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(37, 99, 235, 0.45);
+    border-radius: 18px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.25);
+    padding: 1.2rem 1.3rem;
+    height: auto !important;
+}
+
+.radar-fullscreen-city-slot .selected-city-card::before {
+    height: 4px;
+}
+
+@media (max-width: 768px) {
+    .radar-fullscreen-city-slot {
+        top: auto;
+        bottom: 12px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
+        max-height: 52vh;
+    }
+}
+
 .radar-header {
     padding: 1.25rem 1.5rem;
     border-bottom: 1px solid var(--color-card-border);
