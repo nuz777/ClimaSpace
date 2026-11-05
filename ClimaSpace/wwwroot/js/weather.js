@@ -898,45 +898,11 @@ function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, 
 }
 
 // --------------------------------------------------------------------------
-// Catálogo Extenso de Sistemas Meteorológicos Doppler Regionales
-// (Mar Caribe, Océano Pacífico, Valles Andinos, Llanos y Amazonía)
+// 6. Ecos Doppler Regionales Basados Exclusivamente en Datos Reales (NO FAKES)
 // --------------------------------------------------------------------------
-const REGIONAL_DOPPLER_SYSTEMS = [
-    // 1. Mar Caribe y Zonas Costeras
-    { name: "Frente Marítimo San Andrés y Providencia", baseLat: 13.05, baseLon: -81.55, levels: ['green', 'yellow', 'orange'], baseRadius: 42000, phase: 0, lifeFrames: 8, driftLat: 0.012, driftLon: -0.018 },
-    { name: "Golfo de Urabá / Turbo (Caribe Sur)", baseLat: 8.20, baseLon: -76.80, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 38000, phase: 3, lifeFrames: 9, driftLat: 0.010, driftLon: -0.015 },
-    { name: "Costa Caribe / Barranquilla & Cartagena", baseLat: 10.85, baseLon: -75.10, levels: ['green', 'yellow', 'orange'], baseRadius: 36000, phase: 6, lifeFrames: 8, driftLat: 0.012, driftLon: -0.016 },
-    { name: "Sierra Nevada de Santa Marta (Orográfico)", baseLat: 10.85, baseLon: -73.75, levels: ['green', 'yellow'], baseRadius: 34000, phase: 2, lifeFrames: 8, driftLat: 0.005, driftLon: -0.010 },
-    { name: "Alta Guajira / Cabo de la Vela", baseLat: 12.15, baseLon: -72.10, levels: ['green'], baseRadius: 28000, phase: 8, lifeFrames: 6, driftLat: 0.015, driftLon: -0.020 },
-    { name: "Golfo de Morrosquillo / Coveñas & San Bernardo", baseLat: 9.55, baseLon: -75.75, levels: ['green', 'yellow'], baseRadius: 30000, phase: 4, lifeFrames: 8, driftLat: 0.010, driftLon: -0.014 },
-    { name: "Mar Caribe Abierto / Corriente Norte", baseLat: 14.50, baseLon: -76.50, levels: ['green', 'yellow', 'orange'], baseRadius: 48000, phase: 9, lifeFrames: 9, driftLat: 0.018, driftLon: -0.022 },
-
-    // 2. Océano Pacífico y Chocó Biogeográfico
-    { name: "Chocó Biogeográfico / Bahía Solano & Nuquí", baseLat: 6.05, baseLon: -77.30, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 55000, phase: 1, lifeFrames: 10, driftLat: 0.012, driftLon: -0.010 },
-    { name: "Cuenca Pacífica / Río San Juan", baseLat: 5.45, baseLon: -76.85, levels: ['green', 'yellow', 'orange', 'red'], baseRadius: 48000, phase: 5, lifeFrames: 9, driftLat: 0.010, driftLon: -0.010 },
-    { name: "Bahía de Buenaventura / Costa Central", baseLat: 3.88, baseLon: -77.15, levels: ['green', 'yellow', 'orange'], baseRadius: 40000, phase: 7, lifeFrames: 8, driftLat: 0.008, driftLon: -0.012 },
-    { name: "Ensenada de Tumaco / Pacífico Sur", baseLat: 1.82, baseLon: -78.80, levels: ['green', 'yellow'], baseRadius: 36000, phase: 10, lifeFrames: 7, driftLat: 0.010, driftLon: -0.010 },
-    { name: "Santuario Malpelo / Mar Abierto Pacífico", baseLat: 4.10, baseLon: -81.20, levels: ['green', 'yellow'], baseRadius: 44000, phase: 2, lifeFrames: 8, driftLat: 0.015, driftLon: -0.015 },
-
-    // 3. Regiones Andinas y Valles Interandinos
-    { name: "Relámpago del Catatumbo (Tormenta Continua)", baseLat: 8.75, baseLon: -72.85, levels: ['green', 'yellow', 'orange', 'red', 'purple'], baseRadius: 46000, phase: 0, lifeFrames: 13, driftLat: 0.004, driftLon: -0.006 },
-    { name: "Valle de Aburrá / Medellín & Oriente", baseLat: 6.28, baseLon: -75.52, levels: ['green', 'yellow', 'orange'], baseRadius: 34000, phase: 4, lifeFrames: 8, driftLat: 0.006, driftLon: -0.008 },
-    { name: "Magdalena Medio / Barrancabermeja", baseLat: 7.15, baseLon: -73.85, levels: ['green', 'yellow', 'orange'], baseRadius: 38000, phase: 8, lifeFrames: 8, driftLat: 0.008, driftLon: -0.010 },
-    { name: "Cordillera Central / Eje Cafetero", baseLat: 4.95, baseLon: -75.60, levels: ['green', 'yellow'], baseRadius: 32000, phase: 6, lifeFrames: 7, driftLat: 0.005, driftLon: -0.008 },
-    { name: "Altiplano Cundiboyacense / Sabana", baseLat: 5.15, baseLon: -73.90, levels: ['green', 'yellow'], baseRadius: 32000, phase: 11, lifeFrames: 7, driftLat: 0.005, driftLon: -0.008 },
-    { name: "Macizo Colombiano / Cauca & Huila", baseLat: 2.15, baseLon: -76.60, levels: ['green', 'yellow'], baseRadius: 34000, phase: 3, lifeFrames: 8, driftLat: 0.006, driftLon: -0.008 },
-
-    // 4. Llanos Orientales y Amazonía
-    { name: "Piedemonte Llanero / Villavicencio", baseLat: 4.20, baseLon: -73.45, levels: ['green', 'yellow', 'orange'], baseRadius: 40000, phase: 2, lifeFrames: 8, driftLat: 0.008, driftLon: 0.012 },
-    { name: "Llanos del Meta & Casanare (Sabana)", baseLat: 5.30, baseLon: -71.80, levels: ['green', 'yellow'], baseRadius: 44000, phase: 7, lifeFrames: 8, driftLat: 0.010, driftLon: 0.015 },
-    { name: "Cuenca Amazónica / Caquetá & Putumayo", baseLat: 1.50, baseLon: -75.35, levels: ['green', 'yellow', 'orange'], baseRadius: 50000, phase: 5, lifeFrames: 9, driftLat: 0.008, driftLon: 0.010 },
-    { name: "Trapecio Amazónico / Leticia & Amazonas", baseLat: -4.10, baseLon: -69.95, levels: ['green', 'yellow'], baseRadius: 38000, phase: 9, lifeFrames: 7, driftLat: 0.008, driftLon: 0.010 }
-];
-
-/**
- * Renderiza los ecos Doppler regionales mediante IDW y Ruido Simplex en Canvas.
- * Elimina totalmente los anillos concéntricos y bordes, proporcionando un radar continuo y orgánico.
- */
+// La precipitación regional y global es suministrada en tiempo real por los
+// mosaicos de radar de RainViewer (tilecache.rainviewer.com), alimentados por
+// radares meteorológicos oficiales. No se inyectan tormentas sintéticas ni células simuladas.
 function renderRegionalColombiaEchoes(frameIndex = null) {
     if (!radarMap) return;
 
@@ -946,91 +912,7 @@ function renderRegionalColombiaEchoes(frameIndex = null) {
     regionalEchoGroup.clearLayers();
     regionalEchoCells = [];
 
-    const totalFrames = (radarFrames && radarFrames.length > 0) ? radarFrames.length : 13;
-    const isAnimating = (frameIndex !== null && typeof frameIndex === 'number');
-
-    REGIONAL_DOPPLER_SYSTEMS.forEach((sys, idx) => {
-        let lat = sys.baseLat;
-        let lon = sys.baseLon;
-        let radius = sys.baseRadius;
-        let opacityMult = 1.0;
-        let activeLevels = sys.levels;
-
-        // En reproducción animada: calcular ciclo de vida biológico de la tormenta
-        if (isAnimating) {
-            const relFrame = (frameIndex - sys.phase + totalFrames) % totalFrames;
-
-            if (relFrame >= sys.lifeFrames && sys.lifeFrames < totalFrames) {
-                return;
-            }
-
-            const progress = (sys.lifeFrames > 1) ? (relFrame / (sys.lifeFrames - 1)) : 0.5;
-            const intensity = Math.sin(progress * Math.PI);
-
-            if (intensity < 0.12) return;
-
-            lat += sys.driftLat * relFrame;
-            lon += sys.driftLon * relFrame;
-
-            radius = sys.baseRadius * (0.70 + 0.30 * intensity);
-            opacityMult = 0.35 + 0.65 * intensity;
-
-            if (intensity < 0.40) {
-                activeLevels = ['green'];
-            } else if (intensity < 0.65) {
-                activeLevels = sys.levels.filter(l => l === 'green' || l === 'yellow');
-            } else if (intensity < 0.85) {
-                activeLevels = sys.levels.filter(l => l === 'green' || l === 'yellow' || l === 'orange');
-            }
-        }
-
-        // Determinar dBZ pico y tooltip informativo
-        let dbz = 22;
-        let icon = "🟩";
-        let desc = "Llovizna y nubosidad activa";
-        if (activeLevels.includes('purple')) {
-            dbz = 62; icon = "🟪"; desc = "Tormenta Severa / Granizo continuo";
-        } else if (activeLevels.includes('red')) {
-            dbz = 52; icon = "🟥"; desc = "Tormenta Eléctrica activa";
-        } else if (activeLevels.includes('orange')) {
-            dbz = 42; icon = "🟧"; desc = "Lluvia Fuerte / Aguacero";
-        } else if (activeLevels.includes('yellow')) {
-            dbz = 32; icon = "🟨"; desc = "Lluvia Moderada";
-        }
-
-        // Hit-layer invisible interactivo para el tooltip (SIN círculos concéntricos ni bordes)
-        L.circle([lat, lon], {
-            pane: 'dopplerEchoPane',
-            radius: radius,
-            stroke: false,
-            fillColor: '#000000',
-            fillOpacity: 0.0001,
-            interactive: true
-        }).bindTooltip(`${icon} <strong>${sys.name}:</strong> ${desc} (${dbz} dBZ)`, { direction: 'top' }).addTo(regionalEchoGroup);
-
-        // Celda convectiva principal para el canvas IDW continuo
-        regionalEchoCells.push({
-            lat: lat,
-            lon: lon,
-            radius: radius,
-            dbz: dbz,
-            opacityMult: opacityMult,
-            seed: idx * 17 + 5
-        });
-
-        // Celda secundaria lobular para formas orgánicas no circulares
-        if (dbz >= 32) {
-            regionalEchoCells.push({
-                lat: lat + (sys.driftLat || 0.01) * 3,
-                lon: lon + (sys.driftLon || -0.01) * 3,
-                radius: radius * 0.72,
-                dbz: Math.round(dbz * 0.78),
-                opacityMult: opacityMult * 0.9,
-                seed: idx * 23 + 19
-            });
-        }
-    });
-
+    // Redibujar el canvas IDW únicamente con observaciones locales reales
     renderDopplerCanvas();
 }
 
@@ -1350,11 +1232,11 @@ function scanDopplerForSevereStorms() {
             sweepOverlay.classList.remove('alert-red', 'alert-purple');
         }
         if (hudPulse) hudPulse.className = "hud-status-pulse pulse-cyan";
-        if (hudTitle) hudTitle.textContent = "🟢 BARRIDO DOPPLER: ESCANEO NORMAL";
+        if (hudTitle) hudTitle.textContent = "🟢 BARRIDO DOPPLER: DATOS REALES EN VIVO";
         if (hudBody) {
             hudBody.innerHTML = `
                 <div class="text-white-50 small">
-                    <i class="bi bi-radar me-1 text-info"></i>Barrido 360° completado. Sin tormentas severas ni núcleos de granizo en el cuadrante (&lt;45 dBZ).
+                    <i class="bi bi-shield-check text-success me-1"></i>Barrido 360° en vivo: Cuadrante despejado. Sin tormentas severas ni células convectivas (&lt;45 dBZ) detectadas por la API.
                 </div>
             `;
         }
