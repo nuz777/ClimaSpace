@@ -746,6 +746,63 @@ main {
     mix-blend-mode: normal;
 }
 
+/* Menú Desplegable de Huracanes en el Radar Doppler */
+.radar-hurricanes-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    width: 320px;
+    background: #ffffff;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+    border-radius: 14px;
+    z-index: 1050;
+    overflow: hidden;
+    animation: fadeInDown 0.2s ease-out;
+}
+
+.radar-hurricane-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.radar-hurricane-item:hover {
+    background: #fef2f2;
+    border-color: #f87171;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.radar-hurricane-icon-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.88);
+    color: #ffffff;
+    font-size: 1.5rem;
+    box-shadow: 0 0 16px 5px rgba(239, 68, 68, 0.65);
+    animation: hurricane-spin 5s linear infinite;
+    cursor: pointer;
+}
+
+@keyframes hurricane-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Puntos Azulitos Interactivos de Ciudades en el Radar (Minimalistas, halo suave y crecimiento al hover) */
 .radar-city-dot {
     width: 7px;

@@ -33,6 +33,8 @@ let regionalEchoCells = [];
 let liveRadarEchoes = [];
 let isFetchingLiveDoppler = false;
 let liveRadarLastFetched = 0;
+let trackedRadarHurricanes = [];
+let hurricaneLayerGroup = null;
 
 // Generador de Ruido Simplex 2D para contornos orgánicos no circulares
 const DopplerSimplex = (function () {
@@ -162,18 +164,28 @@ function renderDopplerCanvas() {
     }
 
     const grid = new Float32Array(gw * gh);
-    const bounds = radarMap.getBounds();
+    const zoom = radarMap.getZoom();
 
     for (let c = 0; c < allCells.length; c++) {
         const cell = allCells[c];
-        if (cell.lat < bounds.getSouth() - 1.5 || cell.lat > bounds.getNorth() + 1.5 ||
-            cell.lon < bounds.getWest() - 1.5 || cell.lon > bounds.getEast() + 1.5) {
+        const pt = radarMap.latLngToContainerPoint([cell.lat, cell.lon]);
+
+        // Proyección adaptativa del radio de la célula según zoom:
+        // Evita que desaparezca al alejar (mínimo visible 28px)
+        // y evita que se desvanezca o se lave al acercar (máximo suave adaptado)
+        const cosLat = Math.cos(cell.lat * Math.PI / 180);
+        const radiusM = cell.radius || 35000;
+        const edge = radarMap.latLngToContainerPoint([cell.lat, cell.lon + radiusM / (111320 * (cosLat > 0.05 ? cosLat : 1.0))]);
+        const geoPx = Math.hypot(edge.x - pt.x, edge.y - pt.y);
+
+        const minPx = Math.max(28, 18 + zoom * 2.2);
+        const maxAllowedPx = Math.max(minPx, 80 + zoom * 26);
+        const rPx = Math.max(minPx, Math.min(geoPx, maxAllowedPx));
+
+        // Descartar solo si está completamente fuera de la vista de pantalla visible (más el radio rPx)
+        if (pt.x < -rPx || pt.x > size.x + rPx || pt.y < -rPx || pt.y > size.y + rPx) {
             continue;
         }
-
-        const pt = radarMap.latLngToContainerPoint([cell.lat, cell.lon]);
-        const edge = radarMap.latLngToContainerPoint([cell.lat, cell.lon + cell.radius / (111320 * Math.cos(cell.lat * Math.PI / 180))]);
-        const rPx = Math.max(16, Math.hypot(edge.x - pt.x, edge.y - pt.y));
 
         const sx = pt.x / S;
         const sy = pt.y / S;
@@ -198,8 +210,13 @@ function renderDopplerCanvas() {
                 const noise = DopplerSimplex.noise2D(x * 0.055 + seed, y * 0.055 + seed) * 0.35;
                 const effR = sr * (1.0 + noise);
                 if (dist < effR) {
-                    const norm = 1.0 - (dist / effR);
-                    const val = cell.dbz * Math.pow(norm, 1.35) * (cell.opacityMult || 1.0);
+                    // Núcleo Doppler central sólido (40% del radio) y desvanecimiento suave hacia el borde
+                    const coreFrac = 0.40;
+                    let norm = 1.0;
+                    if (dist > effR * coreFrac) {
+                        norm = 1.0 - ((dist - effR * coreFrac) / (effR * (1.0 - coreFrac)));
+                    }
+                    const val = cell.dbz * Math.pow(Math.max(0, norm), 0.85) * (cell.opacityMult || 1.0);
                     const idx = row + x;
                     if (val > grid[idx]) {
                         grid[idx] = val;
@@ -632,7 +649,7 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
     // 2.5 Inicializar lienzo canvas de ecos continuos Doppler
     initDopplerCanvas();
 
-    radarMap.on('move zoom resize', () => {
+    radarMap.on('move zoom zoomend moveend resize viewreset', () => {
         renderDopplerCanvas();
     });
 
@@ -657,6 +674,9 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
 
     // 6. Consultar y renderizar feed en vivo de la API meteorológica (Open-Meteo)
     fetchLiveDopplerRadarFeed();
+
+    // 6.5 Cargar y monitorear huracanes y ciclones oficiales en vivo (NOAA / JTWC)
+    loadRadarHurricanes();
 
     // 7. Cargar mosaicos de Radar RainViewer (capa dual)
     loadRainViewerRadarLayers();
@@ -1048,6 +1068,9 @@ async function fetchLiveDopplerRadarFeed() {
         regionalEchoCells = [...liveRadarEchoes];
         liveRadarLastFetched = Date.now();
 
+        // Inyectar bandas de lluvia Doppler de huracanes activos si existen
+        injectHurricaneDopplerEchoes();
+
         renderDopplerCanvas();
 
         const timeDisplay = document.getElementById('radarFrameTime');
@@ -1299,6 +1322,228 @@ function toggleRadarSweep() {
         }
     }
 }
+
+// --------------------------------------------------------------------------
+// Monitoreo Oficial de Huracanes y Ciclones Tropicales en el Radar Doppler
+// --------------------------------------------------------------------------
+async function loadRadarHurricanes() {
+    try {
+        const res = await fetch('/Home/GetHurricanes');
+        if (res.ok) {
+            const data = await res.json();
+            trackedRadarHurricanes = Array.isArray(data) ? data : [];
+        }
+    } catch (e) {
+        console.warn("Aviso al consultar huracanes:", e);
+    }
+
+    const badge = document.getElementById('radarHurricaneBadge');
+    if (badge) {
+        badge.textContent = trackedRadarHurricanes.length;
+        badge.className = trackedRadarHurricanes.length > 0 
+            ? "badge bg-white text-danger ms-1 fw-bold" 
+            : "badge bg-secondary text-white ms-1";
+    }
+
+    renderRadarHurricanesMenu();
+    renderHurricanesOnRadarMap();
+    injectHurricaneDopplerEchoes();
+}
+
+function toggleRadarHurricanesMenu() {
+    const dropdown = document.getElementById('radarHurricanesDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('d-none');
+    }
+}
+
+function renderRadarHurricanesMenu() {
+    const list = document.getElementById('radarHurricanesList');
+    if (!list) return;
+
+    if (trackedRadarHurricanes.length === 0) {
+        list.innerHTML = `<div class="p-3 text-center text-muted small"><i class="bi bi-shield-check text-success me-1"></i>No hay ciclones tropicales activos actualmente en monitoreo oficial de NOAA / JTWC.</div>`;
+        return;
+    }
+
+    list.innerHTML = trackedRadarHurricanes.map(h => `
+        <div class="radar-hurricane-item" onclick="focusRadarOnHurricane('${h.id}')" title="Centrar radar en ${h.name}">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fw-bold text-dark small"><i class="bi bi-hurricane text-danger me-1"></i>${h.name}</span>
+                <span class="badge bg-danger text-white">${h.category}</span>
+            </div>
+            <div class="small text-muted">
+                <i class="bi bi-wind text-primary"></i> ${h.maxWindsKmh} km/h • Presión: ${h.pressureHpa} hPa
+            </div>
+            <div class="small text-danger fw-semibold mt-1">
+                <i class="bi bi-geo-alt-fill me-1"></i>${h.locationDesc}
+            </div>
+            <div class="small text-secondary mt-1">
+                <i class="bi bi-compass me-1"></i>${h.movement}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderHurricanesOnRadarMap() {
+    if (!radarMap) return;
+
+    if (!hurricaneLayerGroup) {
+        hurricaneLayerGroup = L.layerGroup().addTo(radarMap);
+    }
+    hurricaneLayerGroup.clearLayers();
+
+    trackedRadarHurricanes.forEach(h => {
+        const icon = L.divIcon({
+            className: 'radar-hurricane-icon-wrapper',
+            html: `<div class="radar-hurricane-icon-marker" title="${h.name} (${h.category})"><i class="bi bi-hurricane"></i></div>`,
+            iconSize: [44, 44],
+            iconAnchor: [22, 22]
+        });
+
+        const marker = L.marker([h.latitude, h.longitude], {
+            icon: icon,
+            zIndexOffset: 900
+        }).addTo(hurricaneLayerGroup);
+
+        marker.bindPopup(`
+            <div class="p-2 text-start" style="min-width: 220px;">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <strong class="text-danger"><i class="bi bi-hurricane me-1"></i>${h.name}</strong>
+                    <span class="badge bg-danger text-white">${h.category}</span>
+                </div>
+                <div class="small text-muted mb-1">
+                    <strong>Vientos Máx:</strong> ${h.maxWindsKmh} km/h<br>
+                    <strong>Presión:</strong> ${h.pressureHpa} hPa<br>
+                    <strong>Movimiento:</strong> ${h.movement}
+                </div>
+                <div class="small text-dark fw-semibold mb-1">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>${h.locationDesc}
+                </div>
+                <div class="badge bg-dark text-white-50 w-100 text-center mt-1">
+                    Monitoreo Oficial NOAA / JTWC en Vivo
+                </div>
+            </div>
+        `);
+    });
+}
+
+function injectHurricaneDopplerEchoes() {
+    if (!trackedRadarHurricanes || trackedRadarHurricanes.length === 0) return;
+
+    trackedRadarHurricanes.forEach((h, hIdx) => {
+        const eyeRadius = Math.min(65000, 32000 + (h.categoryLevel || 1) * 8000);
+        const hurricaneCells = [
+            {
+                lat: h.latitude,
+                lon: h.longitude,
+                radius: eyeRadius,
+                baseRadius: eyeRadius,
+                dbz: 60,
+                baseDbz: 60,
+                opacityMult: 1.0,
+                seed: 88 + hIdx,
+                name: `${h.name} (Pared del Ojo)`
+            },
+            {
+                lat: h.latitude + 0.35,
+                lon: h.longitude - 0.40,
+                radius: eyeRadius * 1.3,
+                baseRadius: eyeRadius * 1.3,
+                dbz: 50,
+                baseDbz: 50,
+                opacityMult: 0.9,
+                seed: 12 + hIdx,
+                name: `${h.name} (Banda Espiral Norte)`
+            },
+            {
+                lat: h.latitude - 0.40,
+                lon: h.longitude + 0.45,
+                radius: eyeRadius * 1.4,
+                baseRadius: eyeRadius * 1.4,
+                dbz: 46,
+                baseDbz: 46,
+                opacityMult: 0.85,
+                seed: 45 + hIdx,
+                name: `${h.name} (Banda Espiral Sur)`
+            },
+            {
+                lat: h.latitude + 0.65,
+                lon: h.longitude + 0.30,
+                radius: eyeRadius * 1.6,
+                baseRadius: eyeRadius * 1.6,
+                dbz: 38,
+                baseDbz: 38,
+                opacityMult: 0.75,
+                seed: 73 + hIdx,
+                name: `${h.name} (Banda Alimentadora)`
+            }
+        ];
+
+        hurricaneCells.forEach(hc => {
+            const rIdx = regionalEchoCells.findIndex(c => c.name === hc.name);
+            if (rIdx >= 0) {
+                regionalEchoCells[rIdx] = hc;
+            } else {
+                regionalEchoCells.push(hc);
+            }
+
+            const lIdx = liveRadarEchoes.findIndex(c => c.name === hc.name);
+            if (lIdx >= 0) {
+                liveRadarEchoes[lIdx] = hc;
+            } else {
+                liveRadarEchoes.push(hc);
+            }
+        });
+    });
+
+    renderDopplerCanvas();
+}
+
+function focusRadarOnHurricane(hurricaneId) {
+    const h = trackedRadarHurricanes.find(x => x.id === hurricaneId);
+    if (!h || !radarMap) return;
+
+    const dropdown = document.getElementById('radarHurricanesDropdown');
+    if (dropdown) dropdown.classList.add('d-none');
+
+    // Volar directamente a la posición del ciclón (ej. cerca de Japón)
+    radarMap.flyTo([h.latitude, h.longitude], 7, {
+        duration: 1.6,
+        easeLinearity: 0.25
+    });
+
+    // Inyectar bandas de lluvia en esa posición
+    injectHurricaneDopplerEchoes();
+
+    // Abrir popup en el marcador
+    if (hurricaneLayerGroup) {
+        hurricaneLayerGroup.eachLayer(layer => {
+            if (layer.getLatLng && 
+                Math.abs(layer.getLatLng().lat - h.latitude) < 0.2 &&
+                Math.abs(layer.getLatLng().lng - h.longitude) < 0.2) {
+                layer.openPopup();
+            }
+        });
+    }
+
+    // Iniciar barrido Doppler para fijar objetivo en el ciclón
+    if (!isDopplerSweepActive) {
+        toggleRadarSweep();
+    } else {
+        scanDopplerForSevereStorms();
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('radarHurricanesDropdown');
+    const btn = document.getElementById('btnRadarHurricanes');
+    if (dropdown && !dropdown.classList.contains('d-none')) {
+        if (!dropdown.contains(e.target) && btn && !btn.contains(e.target)) {
+            dropdown.classList.add('d-none');
+        }
+    }
+});
 
 /**
  * Escanea el cuadrante del radar y detecta en tiempo real tormentas severas púrpuras y rojas

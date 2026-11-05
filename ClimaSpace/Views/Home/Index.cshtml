@@ -76,6 +76,24 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
+                        <!-- Botón de Huracanes / Ciclones Activos (ej. Tifón en Japón) -->
+                        <div class="position-relative">
+                            <button type="button" class="btn btn-sm btn-danger text-white rounded-pill px-3 shadow-sm fw-semibold" id="btnRadarHurricanes" onclick="toggleRadarHurricanesMenu()" title="Ver Huracanes y Ciclones Activos (ej. cerca de Japón)">
+                                <i class="bi bi-hurricane me-1"></i>Huracanes
+                                <span class="badge bg-white text-danger ms-1" id="radarHurricaneBadge">0</span>
+                            </button>
+                            <!-- Panel Flotante de Huracanes Monitoreados -->
+                            <div id="radarHurricanesDropdown" class="radar-hurricanes-dropdown d-none shadow-lg">
+                                <div class="d-flex align-items-center justify-content-between p-2 border-bottom bg-dark text-white rounded-top">
+                                    <span class="fw-bold small"><i class="bi bi-hurricane text-danger me-1"></i>Ciclones Tropicales Activos</span>
+                                    <button type="button" class="btn-close btn-close-white small" onclick="toggleRadarHurricanesMenu()"></button>
+                                </div>
+                                <div id="radarHurricanesList" class="p-2" style="max-height: 280px; overflow-y: auto;">
+                                    <div class="small text-muted p-2">Sincronizando con NOAA / JTWC...</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Enlace directo al Mapa de Viento Animado -->
                         <a asp-controller="Home" asp-action="Viento" class="btn btn-sm btn-info text-dark fw-bold rounded-pill px-3 shadow-sm text-decoration-none">
                             <i class="bi bi-wind me-1"></i>Mapa de Viento
