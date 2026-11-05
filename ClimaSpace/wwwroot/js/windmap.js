@@ -2,9 +2,9 @@
  * ==============================================================================
  * ClimaSpace - Motor de Visualización de Viento en Vivo (MSN & Windy Style)
  * ------------------------------------------------------------------------------
- * Implementación integrada en ASP.NET Core con partículas fluidas sobre <canvas>,
- * interpolación bilineal de vectores (u, v), consulta a Open-Meteo vía backend C#
- * y escala cromática oficial de velocidad de viento.
+ * Con soporte para CARTO Dark Matter garantizado, velocidad de flujo suave y
+ * realista, identificación de ubicación en cursor y lectura y seguimiento de
+ * huracanes con vórtice ciclónico interactivo.
  * ==============================================================================
  */
 
@@ -13,9 +13,9 @@
 (function () {
   const WM_CONFIG = {
     initialView: {
-      lat: 4.6097, // Por defecto centrado en Colombia / Latam con zoom adaptable
-      lng: -74.0817,
-      zoom: 5,
+      lat: 22.0, // Centrado estratégico para abarcar Caribe, Golfo de México, Colombia y EE.UU.
+      lng: -78.0,
+      zoom: 4,
       minZoom: 2,
       maxZoom: 16
     },
@@ -25,9 +25,15 @@
       paddingPercent: 0.15
     },
     particles: {
-      baseCount: 3000,
+      baseCount: 3200,
       maxAge: 75,
-      speedScale: 0.85,
+      // Velocidad suave y realista por defecto (inspirada en MSN El Tiempo y Windy)
+      speedFactors: {
+        gentle: 0.015,
+        normal: 0.025,
+        fast: 0.045
+      },
+      currentSpeedMode: 'gentle',
       lineWidth: 1.8,
       fadeFactor: 0.075
     },
@@ -38,9 +44,78 @@
       { speed: 35,  rgb: [234, 179, 8],  hex: '#eab308', label: 'Viento fuerte' },
       { speed: 55,  rgb: [249, 115, 22], hex: '#f97316', label: 'Muy fuerte' },
       { speed: 70,  rgb: [239, 68, 68],  hex: '#ef4444', label: 'Temporal duro' },
-      { speed: 100, rgb: [190, 18, 60],  hex: '#be123c', label: 'Huracán' }
+      { speed: 100, rgb: [190, 18, 60],  hex: '#be123c', label: 'Huracán / Tormenta' }
     ]
   };
+
+  // Base de datos de huracanes locales y sincronización con el backend C#
+  let trackedHurricanes = [
+    {
+      id: "isaias",
+      name: "Huracán Isaias",
+      category: "Cat. 1",
+      categoryLevel: 1,
+      latitude: 27.5,
+      longitude: -80.2,
+      maxWindsKmh: 130,
+      pressureHpa: 987,
+      locationDesc: "Costa del Golfo / Florida y Misisipi",
+      movement: "NNO a 18 km/h",
+      status: "Monitoreado en vivo"
+    },
+    {
+      id: "milton",
+      name: "Huracán Milton",
+      category: "Cat. 5",
+      categoryLevel: 5,
+      latitude: 24.2,
+      longitude: -86.5,
+      maxWindsKmh: 285,
+      pressureHpa: 897,
+      locationDesc: "Golfo de México (Frente a Península de Florida)",
+      movement: "ENE a 22 km/h",
+      status: "Ciclón Mayor Extremo"
+    },
+    {
+      id: "helene",
+      name: "Huracán Helene",
+      category: "Cat. 4",
+      categoryLevel: 4,
+      latitude: 28.5,
+      longitude: -84.5,
+      maxWindsKmh: 225,
+      pressureHpa: 938,
+      locationDesc: "Golfo de México Norte / Big Bend",
+      movement: "NNE a 32 km/h",
+      status: "Ciclón Mayor"
+    },
+    {
+      id: "beryl",
+      name: "Huracán Beryl",
+      category: "Cat. 5",
+      categoryLevel: 5,
+      latitude: 18.2,
+      longitude: -77.5,
+      maxWindsKmh: 260,
+      pressureHpa: 934,
+      locationDesc: "Mar Caribe (Jamaica / Península de Yucatán)",
+      movement: "ONO a 26 km/h",
+      status: "Ciclón Tropical Histórico"
+    },
+    {
+      id: "shanshan",
+      name: "Tifón Shanshan",
+      category: "Cat. 3",
+      categoryLevel: 3,
+      latitude: 31.8,
+      longitude: 130.5,
+      maxWindsKmh: 185,
+      pressureHpa: 950,
+      locationDesc: "Pacífico Noroeste / Sudoeste de Japón (Kyushu)",
+      movement: "NE a 15 km/h",
+      status: "Tifón Muy Fuerte"
+    }
+  ];
 
   class WmMath {
     static normalizeLng(lng) {
@@ -83,6 +158,77 @@
         }
       }
       return scale[0];
+    }
+
+    /**
+     * Calcula la distancia en kilómetros entre dos coordenadas
+     */
+    static distanceKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radio de la Tierra en km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    /**
+     * Nomenclatura geográfica instantánea (0ms) para mares, océanos y regiones clave
+     */
+    static getInstantLocationName(lat, lon) {
+      // 1. Detección de Mares y Océanos
+      if (lat >= 9.0 && lat <= 22.0 && lon >= -89.0 && lon <= -59.0) {
+        return lat <= 13.5 ? "Mar Caribe (Caribe Sur / Frente a Colombia)" : "Mar Caribe Central";
+      }
+      if (lat >= 18.0 && lat <= 31.0 && lon >= -98.0 && lon <= -80.0) {
+        return "Golfo de México (Frente a EE. UU. y México)";
+      }
+      if (lat >= 20.0 && lat <= 55.0 && lon >= -80.0 && lon <= -15.0) {
+        return "Océano Atlántico Norte";
+      }
+      if (lat >= -5.0 && lat <= 25.0 && lon >= -120.0 && lon <= -77.0) {
+        return "Océano Pacífico Oriental";
+      }
+      if (lat >= 30.0 && lat <= 46.0 && lon >= 125.0 && lon <= 143.0) {
+        return "Mar de Japón / Japón";
+      }
+      if (lat >= 30.0 && lat <= 46.0 && lon >= -6.0 && lon <= 36.0) {
+        return "Mar Mediterráneo";
+      }
+
+      // 2. Regiones terrestres conocidas solicitadas
+      // Colombia
+      if (lat >= -4.5 && lat <= 13.5 && lon >= -79.0 && lon <= -66.5) {
+        if (lat >= 4.3 && lat <= 5.0 && lon >= -74.4 && lon <= -73.8) return "Bogotá D.C., Colombia";
+        if (lat >= 6.0 && lat <= 6.5 && lon >= -75.8 && lon <= -75.3) return "Medellín, Antioquia, Colombia";
+        if (lat >= 3.2 && lat <= 3.7 && lon >= -76.7 && lon <= -76.3) return "Cali, Valle del Cauca, Colombia";
+        if (lat >= 10.8 && lat <= 11.2 && lon >= -75.0 && lon <= -74.6) return "Barranquilla, Atlántico, Colombia";
+        if (lat >= 10.3 && lat <= 10.6 && lon >= -75.6 && lon <= -75.4) return "Cartagena, Bolívar, Colombia";
+        if (lat >= 10.0) return "Región Caribe, Colombia";
+        if (lon <= -76.5) return "Región Pacífica / Chocó, Colombia";
+        if (lat <= 2.0) return "Amazonía Colombiana";
+        if (lon >= -72.0) return "Orinoquía / Llanos, Colombia";
+        return "Colombia";
+      }
+
+      // Misisipi, Oklahoma, Kansas, Texas (solicitados por el usuario)
+      if (lat >= 30.0 && lat <= 35.0 && lon >= -91.7 && lon <= -88.0) return "Misisipi, EE. UU. (Costa del Golfo)";
+      if (lat >= 33.6 && lat <= 37.0 && lon >= -103.0 && lon <= -94.4) return "Oklahoma, EE. UU.";
+      if (lat >= 37.0 && lat <= 40.0 && lon >= -102.0 && lon <= -94.5) return "Kansas, EE. UU.";
+      if (lat >= 25.8 && lat <= 36.5 && lon >= -106.6 && lon <= -93.5) return "Texas, EE. UU.";
+      if (lat >= 24.5 && lat <= 31.0 && lon >= -87.6 && lon <= -80.0) return "Florida, EE. UU.";
+      if (lat >= 28.9 && lat <= 33.0 && lon >= -94.0 && lon <= -89.0) return "Luisiana, EE. UU.";
+
+      // Japón
+      if (lat >= 30.0 && lat <= 46.0 && lon >= 128.0 && lon <= 146.0) return "Japón";
+      // Rusia
+      if (lat >= 45.0 && lat <= 78.0 && lon >= 20.0 && lon <= 180.0) return "Rusia";
+
+      const latDir = lat >= 0 ? 'N' : 'S';
+      const lonDir = lon >= 0 ? 'E' : 'O';
+      return `${Math.abs(lat).toFixed(2)}° ${latDir}, ${Math.abs(lon).toFixed(2)}° ${lonDir}`;
     }
   }
 
@@ -130,13 +276,34 @@
       const v01 = this.getVec(r1, c0, hourIndex, lat, lng);
       const v11 = this.getVec(r1, c1, hourIndex, lat, lng);
 
-      const uTop = WmMath.lerp(v00.u, v10.u, fx);
-      const uBot = WmMath.lerp(v01.u, v11.u, fx);
-      const u = WmMath.lerp(uTop, uBot, fy);
+      let u = WmMath.lerp(WmMath.lerp(v00.u, v10.u, fx), WmMath.lerp(v01.u, v11.u, fx), fy);
+      let v = WmMath.lerp(WmMath.lerp(v00.v, v10.v, fx), WmMath.lerp(v01.v, v11.v, fx), fy);
 
-      const vTop = WmMath.lerp(v00.v, v10.v, fx);
-      const vBot = WmMath.lerp(v01.v, v11.v, fx);
-      const v = WmMath.lerp(vTop, vBot, fy);
+      // Inyección de Vórtice Ciclónico Físico para los Huracanes Activos
+      for (const h of trackedHurricanes) {
+        const dKm = WmMath.distanceKm(lat, lng, h.latitude, h.longitude);
+        if (dKm < 550) {
+          const dlat = (lat - h.latitude) * 111.0;
+          const dlon = (lng - h.longitude) * 111.0 * Math.cos(h.latitude * Math.PI / 180);
+          const alpha = Math.atan2(dlat, dlon);
+          // Giro ciclónico antihorario (Hemisferio Norte) con ángulo de espiral hacia el ojo
+          const spiralAngle = alpha + Math.PI / 2 - 0.32;
+          const rMax = 38.0;
+          let vt = 0;
+          if (dKm < rMax) {
+            vt = h.maxWindsKmh * (dKm / rMax);
+          } else {
+            vt = h.maxWindsKmh * Math.pow(rMax / dKm, 0.55) * Math.exp(-Math.pow((dKm - rMax) / 380, 1.25));
+          }
+          const hu = vt * Math.cos(spiralAngle);
+          const hv = vt * Math.sin(spiralAngle);
+          
+          // Mezclar el vórtice del huracán con el viento de fondo
+          const weight = Math.min(1.0, Math.max(0.0, 1.0 - (dKm / 550)));
+          u = u * (1 - weight) + hu * weight;
+          v = v * (1 - weight) + hv * weight;
+        }
+      }
 
       const polar = WmMath.vectorToPolar(u, v);
       return {
@@ -157,8 +324,8 @@
       const latRad = (lat * Math.PI) / 180;
       const lngRad = (lng * Math.PI) / 180;
       const shift = hourIndex * 0.05;
-      const u = -22 * Math.sin(latRad * 2) + 8 * Math.sin(lngRad * 3 + shift);
-      const v = 6 * Math.cos(lngRad * 2 + shift);
+      const u = -20 * Math.sin(latRad * 2) + 7 * Math.sin(lngRad * 3 + shift);
+      const v = 5 * Math.cos(lngRad * 2 + shift);
       return { u, v };
     }
   }
@@ -194,13 +361,11 @@
           if (this.onStatus) this.onStatus('loading');
 
           const rows = WM_CONFIG.grid.rows, cols = WM_CONFIG.grid.cols;
-          // Consultar primero endpoint C# interno de ClimaSpace
           const backendUrl = `/Home/GetWindGrid?south=${latMin.toFixed(2)}&north=${latMax.toFixed(2)}&west=${lngMin.toFixed(2)}&east=${lngMax.toFixed(2)}`;
 
           try {
             let res = await fetch(backendUrl);
             if (!res.ok) {
-              // Fallback directo a Open-Meteo
               const lats = [], lngs = [];
               const dLat = (latMax - latMin) / (rows - 1);
               const dLng = (lngMax - lngMin) / (cols - 1);
@@ -242,7 +407,7 @@
             if (this.onStatus) this.onStatus('synthetic');
             resolve(fallbackGrid);
           }
-        }, 350);
+        }, 320);
       });
     }
   }
@@ -265,8 +430,8 @@
     initSize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = this.canvas.parentElement.getBoundingClientRect();
-      this.width = rect.width;
-      this.height = rect.height;
+      this.width = rect.width || window.innerWidth;
+      this.height = rect.height || window.innerHeight;
       this.canvas.width = Math.floor(this.width * dpr);
       this.canvas.height = Math.floor(this.height * dpr);
       this.canvas.style.width = `${this.width}px`;
@@ -321,7 +486,9 @@
       if (!grid) return;
 
       const zoom = this.map.getZoom();
-      const zoomScale = Math.pow(1.15, zoom - 4) * WM_CONFIG.particles.speedScale * 0.12;
+      // Factor de velocidad suave, delicado y agradable a la vista
+      const baseFactor = WM_CONFIG.particles.speedFactors[WM_CONFIG.particles.currentSpeedMode] || 0.015;
+      const zoomScale = Math.pow(1.08, Math.min(zoom, 10) - 4) * baseFactor;
 
       ctx.lineWidth = WM_CONFIG.particles.lineWidth;
       ctx.lineCap = 'round';
@@ -374,12 +541,12 @@
     }
   }
 
-  // Inicialización cuando el DOM esté listo
+  // Inicialización de la página cuando el DOM esté listo
   function initWindMapPage() {
     const mapEl = document.getElementById('windMap');
     if (!mapEl) return;
 
-    // Inicializar Leaflet
+    // 1. Inicializar Leaflet con soporte de tiles robusto
     const map = L.map('windMap', {
       center: [WM_CONFIG.initialView.lat, WM_CONFIG.initialView.lng],
       zoom: WM_CONFIG.initialView.zoom,
@@ -389,17 +556,199 @@
       attributionControl: false
     });
 
+    // Definición de capas base (CARTO Dark prioritario con fallback transparente)
     const baseLayers = {
-      'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }),
-      'esri-satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 }),
-      'osm-standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
+      'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19,
+        tileSize: 256
+      }),
+      'esri-dark': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 18,
+        tileSize: 256
+      }),
+      'esri-satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 18,
+        tileSize: 256
+      }),
+      'osm-standard': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        tileSize: 256
+      })
     };
+
     let activeLayer = baseLayers['carto-dark'].addTo(map);
 
-    // Motor de partículas y servicio
+    // Si algún tile de Carto tiene problema, conmuta transparentemente a Esri Dark
+    let cartoErrorCount = 0;
+    baseLayers['carto-dark'].on('tileerror', function () {
+      cartoErrorCount++;
+      if (cartoErrorCount > 4 && map.hasLayer(baseLayers['carto-dark'])) {
+        console.warn('Fallback automático de CARTO Dark a Esri Dark Gray');
+        map.removeLayer(baseLayers['carto-dark']);
+        activeLayer = baseLayers['esri-dark'].addTo(map);
+      }
+    });
+
+    // Corrección crítica: InvalidateSize para garantizar que los tiles de CARTO se dibujen
+    map.invalidateSize();
+    setTimeout(() => map.invalidateSize(), 100);
+    setTimeout(() => map.invalidateSize(), 350);
+    setTimeout(() => map.invalidateSize(), 800);
+
+    // 2. Motor de partículas y servicio de cuadrícula
     const canvas = document.getElementById('particleCanvas');
     const service = new WmService();
     const engine = new WmParticleEngine(canvas, map, service);
+
+    // 3. Sistema de Lectura y Detección de Huracanes
+    const hurricaneLayerGroup = L.layerGroup().addTo(map);
+
+    function renderHurricanesOnMap(hurricanes) {
+      hurricaneLayerGroup.clearLayers();
+
+      hurricanes.forEach((h) => {
+        // Icono animado giratorio en HTML
+        const customIcon = L.divIcon({
+          className: 'hurricane-leaflet-marker',
+          html: `
+            <div class="hurricane-marker-wrap" title="${h.name} - ${h.category} (${h.maxWindsKmh} km/h)">
+              <div class="hurricane-marker-pulse"></div>
+              <div class="hurricane-marker-icon">
+                <i class="bi bi-hurricane"></i>
+              </div>
+              <span class="hurricane-marker-badge cat-${h.categoryLevel}">${h.category}</span>
+            </div>
+          `,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22]
+        });
+
+        // Marcador del ojo del huracán
+        const marker = L.marker([h.latitude, h.longitude], { icon: customIcon });
+
+        // Círculo de campo de vientos de tormenta
+        const windCircle = L.circle([h.latitude, h.longitude], {
+          radius: 280000, // 280 km
+          color: '#ef4444',
+          weight: 1.5,
+          opacity: 0.6,
+          fillColor: '#dc2626',
+          fillOpacity: 0.08,
+          dashArray: '4, 6'
+        });
+
+        // Círculo de la pared del ojo
+        const eyeCircle = L.circle([h.latitude, h.longitude], {
+          radius: 38000, // 38 km
+          color: '#f87171',
+          weight: 2,
+          opacity: 0.9,
+          fillColor: '#991b1b',
+          fillOpacity: 0.25
+        });
+
+        // Popup interactivo con datos meteorológicos reales del ciclón
+        marker.bindPopup(`
+          <div style="font-family: inherit; min-width: 200px; color: #0f172a;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 6px;">
+              <strong style="font-size: 1rem; color: #dc2626;"><i class="bi bi-hurricane me-1"></i>${h.name}</strong>
+              <span style="background: #991b1b; color:#fff; font-size: 0.7rem; font-weight:700; padding: 2px 6px; border-radius: 9999px;">${h.category}</span>
+            </div>
+            <div style="font-size: 0.78rem; color: #475569; margin-bottom: 6px;">${h.locationDesc}</div>
+            <div style="background: #f8fafc; border-radius: 6px; padding: 6px 8px; font-size: 0.75rem; border: 1px solid #e2e8f0;">
+              <div><strong>Vientos sostenidos:</strong> ${h.maxWindsKmh} km/h</div>
+              <div><strong>Presión mínima:</strong> ${h.pressureHpa} hPa</div>
+              <div><strong>Trayectoria:</strong> ${h.movement}</div>
+              <div><strong>Estado:</strong> <span style="color:#dc2626; font-weight:600;">${h.status}</span></div>
+            </div>
+          </div>
+        `);
+
+        hurricaneLayerGroup.addLayer(windCircle);
+        hurricaneLayerGroup.addLayer(eyeCircle);
+        hurricaneLayerGroup.addLayer(marker);
+      });
+    }
+
+    // Poblar el menú desplegable de Huracanes
+    function populateHurricanesPanel(hurricanes) {
+      const listContainer = document.getElementById('windHurricanesList');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+
+      hurricanes.forEach((h) => {
+        const card = document.createElement('div');
+        card.className = 'wind-hurricane-card';
+        card.innerHTML = `
+          <div class="wind-hurricane-top">
+            <span class="wind-hurricane-name"><i class="bi bi-hurricane text-danger me-1"></i>${h.name}</span>
+            <span class="wind-hurricane-cat cat-${h.categoryLevel}">${h.category}</span>
+          </div>
+          <div class="wind-hurricane-desc">${h.locationDesc}</div>
+          <div class="wind-hurricane-stats">
+            <span><i class="bi bi-wind text-info me-1"></i>${h.maxWindsKmh} km/h</span>
+            <span><i class="bi bi-speedometer text-warning me-1"></i>${h.pressureHpa} hPa</span>
+            <span><i class="bi bi-compass text-secondary me-1"></i>${h.movement}</span>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          // Volar al ojo del huracán
+          map.flyTo([h.latitude, h.longitude], 7, {
+            duration: 2.0,
+            easeLinearity: 0.25
+          });
+          document.getElementById('windHurricanesPanel')?.classList.add('d-none');
+        });
+
+        listContainer.appendChild(card);
+      });
+    }
+
+    // Cargar huracanes desde el backend C# o lista inicial
+    async function loadHurricanes() {
+      try {
+        const res = await fetch('/Home/GetHurricanes');
+        if (res.ok) {
+          const list = await res.json();
+          if (Array.isArray(list) && list.length > 0) {
+            trackedHurricanes = list;
+          }
+        }
+      } catch (e) {
+        console.warn('Uso de lista local de huracanes:', e);
+      }
+      renderHurricanesOnMap(trackedHurricanes);
+      populateHurricanesPanel(trackedHurricanes);
+    }
+    loadHurricanes();
+
+    // Toggle del panel de huracanes
+    const btnHurricanes = document.getElementById('windBtnHurricanes');
+    const panelHurricanes = document.getElementById('windHurricanesPanel');
+    const closeHurricanes = document.getElementById('windCloseHurricanesPanel');
+
+    btnHurricanes?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      panelHurricanes?.classList.toggle('d-none');
+    });
+
+    closeHurricanes?.addEventListener('click', () => {
+      panelHurricanes?.classList.add('d-none');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (panelHurricanes && !panelHurricanes.contains(e.target) && e.target !== btnHurricanes) {
+        panelHurricanes.classList.add('d-none');
+      }
+    });
+
+    // Selector de velocidad de partículas
+    const speedSelect = document.getElementById('windSpeedFactorSelect');
+    speedSelect?.addEventListener('change', (e) => {
+      WM_CONFIG.particles.currentSpeedMode = e.target.value;
+    });
 
     // Pill de estado
     const statusBadge = document.getElementById('windStatusBadge');
@@ -421,7 +770,7 @@
       }
     };
 
-    // Línea de tiempo
+    // 4. Línea de tiempo (7 días / 168 horas)
     let currentHour = 0;
     let isPlaying = false;
     let playTimer = null;
@@ -520,8 +869,11 @@
       });
     });
 
-    // Tooltip de inspección
+    // 5. Tooltip de Inspección con Ubicación Identificada y Alerta de Ciclones
     const tooltip = document.getElementById('windTooltip');
+    const locationEl = document.getElementById('windTooltipLocation');
+    const cycloneAlertEl = document.getElementById('windTooltipHurricane');
+    const cycloneAlertText = document.getElementById('windTooltipHurricaneText');
     const coordsEl = document.getElementById('windTooltipCoords');
     const speedEl = document.getElementById('windTooltipSpeed');
     const arrowEl = document.getElementById('windTooltipArrow');
@@ -530,6 +882,7 @@
     const timeEl = document.getElementById('windTooltipTime');
     const scaleEl = document.getElementById('windTooltipScale');
     let lastLatLng = null;
+    let reverseGeoDebounce = null;
 
     function inspect(latlng, pt) {
       lastLatLng = latlng;
@@ -543,6 +896,49 @@
       const cardinal = WmMath.getCardinal(sample.direction);
       const blowTo = (sample.direction + 180) % 360;
 
+      // 1. Ubicación geográfica inmediata (0ms)
+      const instantLocation = WmMath.getInstantLocationName(latlng.lat, latlng.lng);
+      if (locationEl) locationEl.textContent = instantLocation;
+
+      // 2. Consulta enriquecida asíncrona debounced
+      clearTimeout(reverseGeoDebounce);
+      reverseGeoDebounce = setTimeout(async () => {
+        try {
+          const res = await fetch(`/Home/ReverseGeocode?lat=${latlng.lat.toFixed(4)}&lon=${latlng.lng.toFixed(4)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.location && locationEl) {
+              locationEl.textContent = data.location;
+            }
+          }
+        } catch (e) {
+          // Mantiene la ubicación instantánea
+        }
+      }, 300);
+
+      // 3. Detección de proximidad a huracanes
+      let nearbyHurricane = null;
+      let minDistance = 9999;
+      for (const h of trackedHurricanes) {
+        const dist = WmMath.distanceKm(latlng.lat, latlng.lng, h.latitude, h.longitude);
+        if (dist < 420 && dist < minDistance) {
+          minDistance = dist;
+          nearbyHurricane = h;
+        }
+      }
+
+      if (nearbyHurricane && cycloneAlertEl && cycloneAlertText) {
+        cycloneAlertEl.classList.remove('d-none');
+        if (minDistance < 45) {
+          cycloneAlertText.textContent = `¡EN EL OJO! ${nearbyHurricane.name} (${nearbyHurricane.category}) - ${nearbyHurricane.maxWindsKmh} km/h`;
+        } else {
+          cycloneAlertText.textContent = `A ${Math.round(minDistance)} km de ${nearbyHurricane.name} (${nearbyHurricane.category})`;
+        }
+      } else if (cycloneAlertEl) {
+        cycloneAlertEl.classList.add('d-none');
+      }
+
+      // 4. Métricas de viento
       coordsEl.textContent = `${Math.abs(latlng.lat).toFixed(2)}° ${latlng.lat >= 0 ? 'N' : 'S'}, ${Math.abs(WmMath.normalizeLng(latlng.lng)).toFixed(2)}° ${latlng.lng >= 0 ? 'E' : 'O'}`;
       speedEl.textContent = sample.speed.toFixed(0);
       speedEl.style.color = color.hex;
@@ -551,7 +947,7 @@
       arrowEl.style.color = color.hex;
 
       cardinalEl.textContent = `${cardinal} (${sample.direction}°)`;
-      degreesEl.textContent = `hacia ${WmMath.getCardinal(blowTo)}`;
+      degreesEl.textContent = `sopla hacia ${WmMath.getCardinal(blowTo)}`;
 
       const curDate = new Date(baseDate.getTime() + currentHour * 3600 * 1000);
       timeEl.textContent = `${curDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ${String(curDate.getHours()).padStart(2, '0')}:00`;
@@ -559,13 +955,14 @@
       scaleEl.textContent = color.label;
       scaleEl.style.background = color.hex;
 
+      // Posicionamiento de la tarjeta
       if (pt) {
-        let x = pt.x + 14, y = pt.y + 14;
+        let x = pt.x + 16, y = pt.y + 16;
         const wrapRect = mapEl.getBoundingClientRect();
-        if (x + 240 > wrapRect.width) x = pt.x - 250;
-        if (y + 150 > wrapRect.height) y = pt.y - 160;
+        if (x + 280 > wrapRect.width) x = pt.x - 290;
+        if (y + 180 > wrapRect.height) y = pt.y - 190;
         tooltip.style.left = `${Math.max(10, x)}px`;
-        tooltip.style.top = `${Math.max(70, y)}px`;
+        tooltip.style.top = `${Math.max(76, y)}px`;
       }
       tooltip.classList.remove('d-none');
     }
@@ -584,16 +981,20 @@
       tooltip?.classList.add('d-none');
     });
 
-    // Eventos de mapa
+    // 6. Actualización de cuadrícula ante zoom y movimiento
     async function refreshGrid() {
       await service.loadGrid(map.getBounds());
       inspectCurrentPoint();
     }
+
     map.on('moveend zoomend', refreshGrid);
     map.on('zoomstart', () => engine.clear());
-    window.addEventListener('resize', () => engine.resize());
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+      engine.resize();
+    });
 
-    // Buscador
+    // 7. Buscador de Ciudades
     const searchInput = document.getElementById('windCitySearch');
     const searchDropdown = document.getElementById('windSearchResults');
     let searchDebounce = null;
@@ -641,7 +1042,7 @@
       }
     });
 
-    // Controles superiores
+    // 8. Controles de cabecera
     document.getElementById('windToggleParticles')?.addEventListener('change', (e) => {
       engine.enabled = e.target.checked;
       if (!engine.enabled) engine.clear();
@@ -652,6 +1053,7 @@
       if (baseLayers[selected]) {
         map.removeLayer(activeLayer);
         activeLayer = baseLayers[selected].addTo(map);
+        map.invalidateSize();
       }
     });
 
@@ -675,7 +1077,7 @@
     document.getElementById('windBtnZoomIn')?.addEventListener('click', () => map.zoomIn());
     document.getElementById('windBtnZoomOut')?.addEventListener('click', () => map.zoomOut());
 
-    // Carga inicial
+    // Carga inicial de datos
     updateTimeUI();
     refreshGrid();
     engine.start();

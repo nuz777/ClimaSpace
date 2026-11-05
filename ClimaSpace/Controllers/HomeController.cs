@@ -111,6 +111,27 @@ public class HomeController : Controller
         }
     }
 
+    [HttpGet]
+    public IActionResult GetHurricanes()
+    {
+        var list = _windService.GetHurricanes();
+        return Json(list);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReverseGeocode(double lat, double lon)
+    {
+        try
+        {
+            var locationName = await _windService.ReverseGeocodeAsync(lat, lon);
+            return Json(new { location = locationName });
+        }
+        catch
+        {
+            return Json(new { location = $"{Math.Abs(lat):F2}° {(lat >= 0 ? "N" : "S")}, {Math.Abs(lon):F2}° {(lon >= 0 ? "E" : "O")}" });
+        }
+    }
+
     public IActionResult Privacy()
     {
         return View();

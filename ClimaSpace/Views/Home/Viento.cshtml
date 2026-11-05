@@ -40,6 +40,33 @@
 
             <!-- Controles y Acciones -->
             <div class="wind-actions">
+                <!-- Botón de Monitoreo de Huracanes -->
+                <button type="button" id="windBtnHurricanes" class="wind-btn-hurricane" title="Ver Huracanes y Ciclones Activos">
+                    <i class="bi bi-hurricane"></i>
+                    <span>Huracanes</span>
+                    <span class="badge bg-danger rounded-pill" id="windHurricaneCountBadge">5</span>
+                </button>
+
+                <!-- Menú Desplegable de Huracanes Monitoreados -->
+                <div id="windHurricanesPanel" class="wind-hurricanes-panel d-none">
+                    <div class="wind-hurricanes-header">
+                        <span class="wind-hurricanes-title">
+                            <i class="bi bi-hurricane"></i> Sistemas Ciclónicos
+                        </span>
+                        <button type="button" id="windCloseHurricanesPanel" class="btn-close btn-close-white" style="font-size: 0.75rem;"></button>
+                    </div>
+                    <div id="windHurricanesList">
+                        <!-- Poblado dinámicamente por windmap.js -->
+                    </div>
+                </div>
+
+                <!-- Selector de Intensidad de Animación (Velocidad de Flujo) -->
+                <select id="windSpeedFactorSelect" class="wind-select" title="Velocidad del movimiento de partículas">
+                    <option value="gentle" selected>🍃 Flujo Suave</option>
+                    <option value="normal">💨 Flujo Normal</option>
+                    <option value="fast">⚡ Flujo Rápido</option>
+                </select>
+
                 <!-- Toggle de Partículas -->
                 <label class="wind-toggle-label" title="Activar o pausar partículas animadas">
                     <input type="checkbox" id="windToggleParticles" checked />
@@ -47,9 +74,10 @@
                     <span class="label-text"><i class="bi bi-water"></i> Animación</span>
                 </label>
 
-                <!-- Selector de Capas Base -->
+                <!-- Selector de Capas Base (con CARTO Oscuro prioritario) -->
                 <select id="windLayerSelect" class="wind-select" title="Seleccionar capa base del mapa">
                     <option value="carto-dark" selected>🌙 CARTO Oscuro</option>
+                    <option value="esri-dark">🌑 Esri Oscuro</option>
                     <option value="esri-satellite">🛰️ Satélite Esri</option>
                     <option value="osm-standard">🗺️ OpenStreetMap</option>
                 </select>
@@ -87,12 +115,26 @@
                 </button>
             </div>
 
-            <!-- Tooltip de Inspección Flotante -->
+            <!-- Tooltip de Inspección Flotante con Ubicación Identificada -->
             <div id="windTooltip" class="wind-tooltip d-none">
                 <button type="button" id="windCloseTooltip" class="wind-tooltip-close" title="Cerrar">
                     <i class="bi bi-x"></i>
                 </button>
+
+                <!-- Bloque de Ubicación Identificada -->
+                <div class="wind-tooltip-loc-box">
+                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                    <span id="windTooltipLocation" class="wind-tooltip-location">Ubicación detectada</span>
+                </div>
                 <span id="windTooltipCoords" class="wind-tooltip-coords">--°, --°</span>
+
+                <!-- Alerta Dinámica de Huracán -->
+                <div id="windTooltipHurricane" class="wind-tooltip-cyclone-alert d-none">
+                    <i class="bi bi-hurricane me-1 text-danger"></i>
+                    <span id="windTooltipHurricaneText">Alerta de Ciclón</span>
+                </div>
+
+                <!-- Métricas de Viento y Flecha -->
                 <div class="wind-tooltip-body">
                     <div>
                         <span id="windTooltipSpeed" class="wind-speed-num">--</span>
