@@ -534,88 +534,49 @@ main {
 #weatherRadarMap {
     width: 100%;
     height: 100%;
-    z-index: 1;
+    position: relative;
+    z-index: auto !important;
 }
 
-/* Efecto de Barrido de Radar (Doppler Sweep Overlay) y Detección de Tormentas */
-.radar-sweep-overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 380px;
-    height: 380px;
-    margin-top: -190px;
-    margin-left: -190px;
-    border-radius: 50%;
-    border: 1px solid rgba(6, 182, 212, 0.4);
-    box-shadow: inset 0 0 30px rgba(6, 182, 212, 0.15), 0 0 20px rgba(6, 182, 212, 0.1);
-    pointer-events: none;
-    z-index: 500;
-    display: none;
-    transition: border-color 0.4s ease, box-shadow 0.4s ease;
+/* Popups y Tooltips de Leaflet (Siempre por encima de las manchas Doppler y sin contaminación de color) */
+.leaflet-pane.leaflet-popup-pane,
+.leaflet-popup-pane {
+    z-index: 750 !important;
 }
 
-.radar-sweep-overlay.active {
-    display: block;
+.leaflet-popup {
+    z-index: 750 !important;
 }
 
-/* Anillos concéntricos de alcance Doppler */
-.radar-sweep-overlay::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 200px;
-    height: 200px;
-    margin-top: -100px;
-    margin-left: -100px;
-    border-radius: 50%;
-    border: 1px dashed rgba(6, 182, 212, 0.3);
-    box-sizing: border-box;
-    transition: border-color 0.4s ease;
+.leaflet-popup-content-wrapper {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-radius: 14px !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35) !important;
+    position: relative !important;
+    isolation: isolate !important; /* Impide que mix-blend-mode manche la tarjeta con colores del radar */
 }
 
-/* Haz de barrido Doppler rotatorio */
-.radar-sweep-overlay::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: conic-gradient(from 0deg at 50% 50%, rgba(6, 182, 212, 0.4) 0deg, rgba(6, 182, 212, 0.05) 50deg, rgba(6, 182, 212, 0) 75deg);
-    animation: radar-spin 2.6s linear infinite;
-    transition: background 0.4s ease;
+.leaflet-popup-tip {
+    background: #ffffff !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-/* Modo de Barrido: ALERTA ROJA (Tormenta Eléctrica / Lluvia Torrencial) */
-.radar-sweep-overlay.alert-red {
-    border-color: rgba(239, 68, 68, 0.7);
-    box-shadow: inset 0 0 35px rgba(239, 68, 68, 0.25), 0 0 25px rgba(239, 68, 68, 0.2);
-}
-.radar-sweep-overlay.alert-red::after {
-    border-color: rgba(239, 68, 68, 0.45);
-}
-.radar-sweep-overlay.alert-red::before {
-    background: conic-gradient(from 0deg at 50% 50%, rgba(239, 68, 68, 0.55) 0deg, rgba(239, 68, 68, 0.12) 50deg, rgba(239, 68, 68, 0) 80deg);
+.dark-mode .leaflet-popup-content-wrapper {
+    background: #111827 !important;
+    color: #f8fafc !important;
+    border: 1px solid #374151 !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
 }
 
-/* Modo de Barrido: ALERTA PÚRPURA (Tormenta Severa / Granizo / Supercélula) */
-.radar-sweep-overlay.alert-purple {
-    border-color: rgba(168, 85, 247, 0.85);
-    box-shadow: inset 0 0 45px rgba(168, 85, 247, 0.35), 0 0 30px rgba(168, 85, 247, 0.3);
-}
-.radar-sweep-overlay.alert-purple::after {
-    border-color: rgba(168, 85, 247, 0.55);
-}
-.radar-sweep-overlay.alert-purple::before {
-    background: conic-gradient(from 0deg at 50% 50%, rgba(168, 85, 247, 0.6) 0deg, rgba(220, 38, 38, 0.25) 40deg, rgba(168, 85, 247, 0) 85deg);
+.dark-mode .leaflet-popup-tip {
+    background: #111827 !important;
 }
 
-@keyframes radar-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+/* Barrido de radar Doppler retirado según solicitud */
+.radar-sweep-overlay,
+.radar-detection-hud {
+    display: none !important;
 }
 
 /* Panel HUD Flotante de Detección de Tormentas */

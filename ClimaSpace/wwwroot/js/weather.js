@@ -116,6 +116,16 @@ const DOPPLER_LUT = (function () {
 function initDopplerCanvas() {
     dopplerCanvas = document.getElementById('dopplerRadarCanvas');
     if (!dopplerCanvas) return;
+
+    // Asegurar que el lienzo esté dentro del pane de ecos de Leaflet (zIndex 420)
+    // para quedar SIEMPRE por debajo de marcadores (zIndex 600) y popups de info (zIndex 700)
+    if (radarMap && radarMap.getPane('dopplerEchoPane')) {
+        const pane = radarMap.getPane('dopplerEchoPane');
+        if (dopplerCanvas.parentElement !== pane) {
+            pane.appendChild(dopplerCanvas);
+        }
+    }
+
     dopplerCtx = dopplerCanvas.getContext('2d');
     if (!dopplerOffscreenCanvas) {
         dopplerOffscreenCanvas = document.createElement('canvas');
@@ -128,6 +138,13 @@ function renderDopplerCanvas() {
     if (!dopplerCanvas || !dopplerCtx) {
         initDopplerCanvas();
         if (!dopplerCanvas || !dopplerCtx) return;
+    }
+
+    // Alinear el lienzo exactamente con la vista del mapa
+    const mapPane = radarMap.getPanes().mapPane;
+    if (mapPane) {
+        const mapPos = L.DomUtil.getPosition(mapPane) || { x: 0, y: 0 };
+        L.DomUtil.setPosition(dopplerCanvas, L.point(-mapPos.x, -mapPos.y));
     }
 
     const size = radarMap.getSize();
@@ -787,13 +804,6 @@ function setManualDopplerLevel(level) {
     if (!currentManualLevel) {
         fetchLiveDopplerRadarFeed();
     }
-
-    // Si se activa nivel Rojo o Granizo, iniciar el barrido Doppler automáticamente para detectarlo
-    if ((level === 'red' || level === 'purple') && !isDopplerSweepActive) {
-        toggleRadarSweep();
-    } else if (isDopplerSweepActive) {
-        scanDopplerForSevereStorms();
-    }
 }
 
 function renderPrecipitationEchoes(lat, lon, conditionDesc, precipMm, cityName, forcedLevel) {
@@ -1303,34 +1313,7 @@ function stopRadarAnimation() {
 }
 
 function toggleRadarSweep() {
-    const sweepOverlay = document.getElementById('radarSweepOverlay');
-    const sweepBtn = document.getElementById('btnRadarSweep');
-    const hud = document.getElementById('radarDetectionHud');
-    if (!sweepOverlay) return;
-
-    isDopplerSweepActive = !isDopplerSweepActive;
-
-    if (isDopplerSweepActive) {
-        sweepOverlay.classList.add('active');
-        if (hud) hud.classList.remove('d-none');
-        if (sweepBtn) {
-            sweepBtn.classList.add('btn-info', 'text-white');
-            sweepBtn.classList.remove('btn-outline-secondary');
-            sweepBtn.innerHTML = '<i class="bi bi-bullseye me-1"></i>Barrido Activo';
-        }
-        scanDopplerForSevereStorms();
-    } else {
-        sweepOverlay.classList.remove('active', 'alert-red', 'alert-purple');
-        if (hud) hud.classList.add('d-none');
-        if (sweepBtn) {
-            sweepBtn.classList.remove('btn-info', 'text-white');
-            sweepBtn.classList.add('btn-outline-secondary');
-            sweepBtn.innerHTML = '<i class="bi bi-bullseye me-1"></i>Barrido Doppler';
-        }
-        if (detectedStormLayerGroup && radarMap) {
-            detectedStormLayerGroup.clearLayers();
-        }
-    }
+    // Función mantenida por compatibilidad (barrido Doppler desactivado)
 }
 
 // --------------------------------------------------------------------------
@@ -1535,13 +1518,6 @@ function focusRadarOnHurricane(hurricaneId) {
                 layer.openPopup();
             }
         });
-    }
-
-    // Iniciar barrido Doppler para fijar objetivo en el ciclón
-    if (!isDopplerSweepActive) {
-        toggleRadarSweep();
-    } else {
-        scanDopplerForSevereStorms();
     }
 }
 

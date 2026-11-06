@@ -90,10 +90,6 @@
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-semibold" id="btnRadarFullscreen" onclick="toggleRadarFullscreen()" title="Ver radar a pantalla completa">
                             <i class="bi bi-arrows-fullscreen me-1" id="btnFullscreenIcon"></i><span id="btnFullscreenText">Pantalla Completa</span>
                         </button>
-                        <!-- Botón Escáner Doppler -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btnRadarSweep" onclick="toggleRadarSweep()">
-                            <i class="bi bi-bullseye me-1"></i>Barrido Doppler
-                        </button>
                     </div>
                 </div>
 
@@ -106,18 +102,6 @@
                     <button type="button" class="radar-floating-btn shadow-sm" id="btnFloatingFullscreen" onclick="toggleRadarFullscreen()" title="Pantalla Completa">
                         <i class="bi bi-arrows-fullscreen" id="floatingFullscreenIcon"></i>
                     </button>
-                    <!-- Overlay de Barrido Giratorio -->
-                    <div class="radar-sweep-overlay" id="radarSweepOverlay"></div>
-                    <!-- HUD de Detección de Tormentas Severas del Barrido Doppler -->
-                    <div class="radar-detection-hud d-none" id="radarDetectionHud">
-                        <div class="hud-header">
-                            <span class="hud-status-pulse pulse-cyan" id="hudPulse"></span>
-                            <span class="hud-title" id="hudTitle">BARRIDO DOPPLER ACTIVO</span>
-                        </div>
-                        <div class="hud-body" id="hudBody">
-                            <div class="small text-white-50">Escaneando reflectividad Doppler en 360°...</div>
-                        </div>
-                    </div>
 
                     <!-- Contenedor Flotante de Ciudad Seleccionada en Pantalla Completa -->
                     <div class="radar-fullscreen-city-slot d-none" id="radarFullscreenCitySlot">
