@@ -117,15 +117,6 @@ function initDopplerCanvas() {
     dopplerCanvas = document.getElementById('dopplerRadarCanvas');
     if (!dopplerCanvas) return;
 
-    // Asegurar que el lienzo esté dentro del pane de ecos de Leaflet (zIndex 420)
-    // para quedar SIEMPRE por debajo de marcadores (zIndex 600) y popups de info (zIndex 700)
-    if (radarMap && radarMap.getPane('dopplerEchoPane')) {
-        const pane = radarMap.getPane('dopplerEchoPane');
-        if (dopplerCanvas.parentElement !== pane) {
-            pane.appendChild(dopplerCanvas);
-        }
-    }
-
     dopplerCtx = dopplerCanvas.getContext('2d');
     if (!dopplerOffscreenCanvas) {
         dopplerOffscreenCanvas = document.createElement('canvas');
@@ -138,13 +129,6 @@ function renderDopplerCanvas() {
     if (!dopplerCanvas || !dopplerCtx) {
         initDopplerCanvas();
         if (!dopplerCanvas || !dopplerCtx) return;
-    }
-
-    // Alinear el lienzo exactamente con la vista del mapa
-    const mapPane = radarMap.getPanes().mapPane;
-    if (mapPane) {
-        const mapPos = L.DomUtil.getPosition(mapPane) || { x: 0, y: 0 };
-        L.DomUtil.setPosition(dopplerCanvas, L.point(-mapPos.x, -mapPos.y));
     }
 
     const size = radarMap.getSize();

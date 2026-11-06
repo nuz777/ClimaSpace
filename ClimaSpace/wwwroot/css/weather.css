@@ -534,8 +534,7 @@ main {
 #weatherRadarMap {
     width: 100%;
     height: 100%;
-    position: relative;
-    z-index: auto !important;
+    z-index: 1;
 }
 
 /* Leyenda de Capa de Viento MSN (0 a 100+ km/h) */
@@ -626,40 +625,6 @@ main {
     }
 }
 
-/* Popups y Tooltips de Leaflet (Siempre por encima de las manchas Doppler y sin contaminación de color) */
-.leaflet-pane.leaflet-popup-pane,
-.leaflet-popup-pane {
-    z-index: 750 !important;
-}
-
-.leaflet-popup {
-    z-index: 750 !important;
-}
-
-.leaflet-popup-content-wrapper {
-    background: #ffffff !important;
-    color: #1e293b !important;
-    border-radius: 14px !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35) !important;
-    position: relative !important;
-    isolation: isolate !important; /* Impide que mix-blend-mode manche la tarjeta con colores del radar */
-}
-
-.leaflet-popup-tip {
-    background: #ffffff !important;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2) !important;
-}
-
-.dark-mode .leaflet-popup-content-wrapper {
-    background: #111827 !important;
-    color: #f8fafc !important;
-    border: 1px solid #374151 !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6) !important;
-}
-
-.dark-mode .leaflet-popup-tip {
-    background: #111827 !important;
-}
 
 /* Barrido de radar Doppler retirado según solicitud */
 .radar-sweep-overlay,
