@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="csBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="csSun" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="csShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background Icon Badge -->
+  <rect width="64" height="64" rx="16" fill="url(#csBg)"/>
+  
+  <!-- Golden Sun -->
+  <g filter="url(#csShadow)">
+    <circle cx="42" cy="24" r="10.5" fill="url(#csSun)"/>
+    <path d="M42 8v3.5 M42 36.5v3.5 M26 24h3.5 M54.5 24H58 M30.7 12.7l2.5 2.5 M50.8 32.8l2.5 2.5 M30.7 35.3l2.5-2.5 M50.8 15.2l2.5-2.5" 
+          stroke="#fde047" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Clean White Cloud -->
+  <path d="M22 47h24a9.5 9.5 0 0 0 1.2-18.9A13.5 13.5 0 0 0 21.5 29.2 8.5 8.5 0 0 0 22 47z" 
+        fill="#ffffff" filter="url(#csShadow)"/>
+</svg>
