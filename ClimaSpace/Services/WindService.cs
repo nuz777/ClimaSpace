@@ -298,20 +298,19 @@ public class WindService
     /// </summary>
     public async Task<string> GetWindGridForecastAsync(double south, double north, double west, double east, int rows = 8, int cols = 8)
     {
-        string cacheKey = string.Create(CultureInfo.InvariantCulture, $"{south:F1}_{north:F1}_{west:F1}_{east:F1}_{rows}x{cols}");
+        string cacheKey = string.Create(CultureInfo.InvariantCulture, $"{south:F2}_{north:F2}_{west:F2}_{east:F2}_{rows}x{cols}");
         
         if (Cache.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow < cached.ExpiresAt)
         {
             return cached.Json;
         }
 
-        double latPad = (north - south) * 0.15;
-        double lngPad = (east - west) * 0.15;
-
-        double latMin = Math.Clamp(south - latPad, -80.0, 80.0);
-        double latMax = Math.Clamp(north + latPad, -80.0, 80.0);
-        double lngMin = west - lngPad;
-        double lngMax = east + lngPad;
+        // Se usan exactamente los límites solicitados por el visor para que la cuadrícula
+        // y los vectores coincidan geográficamente al 100% con el mapa Leaflet.
+        double latMin = Math.Clamp(south, -80.0, 80.0);
+        double latMax = Math.Clamp(north, -80.0, 80.0);
+        double lngMin = west;
+        double lngMax = east;
 
         double dLat = (latMax - latMin) / Math.Max(1, rows - 1);
         double dLng = (lngMax - lngMin) / Math.Max(1, cols - 1);
