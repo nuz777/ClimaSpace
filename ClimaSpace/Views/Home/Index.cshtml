@@ -340,7 +340,7 @@
                         {
                             <div class="hourly-card-white" style="animation-delay: @(hourlyIdx * 35)ms;">
                                 <div class="small text-white-50 mb-1">@hour.Time</div>
-                                <i class="bi @hour.IconClass fs-3 my-2 d-block"></i>
+                                <i class="bi @hour.IconClass.Replace("text-primary", "text-white") fs-3 my-2 d-block"></i>
                                 <div class="fw-bold mb-1" data-temp-c="@hour.TemperatureC" data-temp-f="@hour.TemperatureF">
                                     @hour.TemperatureC°
                                 </div>

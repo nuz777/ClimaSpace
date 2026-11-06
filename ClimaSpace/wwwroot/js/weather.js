@@ -516,10 +516,12 @@ function updateHeroCard(data) {
     // Actualizar cinta horizontal de 24 horas con animación escalonada
     const hourlyContainer = document.getElementById('hourlyForecastContainer');
     if (hourlyContainer && data.hourly) {
-        hourlyContainer.innerHTML = data.hourly.map((h, idx) => `
+        hourlyContainer.innerHTML = data.hourly.map((h, idx) => {
+            const iconCls = (h.iconClass || '').replace('text-primary', 'text-white');
+            return `
             <div class="hourly-card-white" style="animation-delay: ${idx * 35}ms;">
                 <div class="small text-white-50 mb-1">${h.time}</div>
-                <i class="bi ${h.iconClass} fs-3 my-2 d-block"></i>
+                <i class="bi ${iconCls} fs-3 my-2 d-block"></i>
                 <div class="fw-bold mb-1" data-temp-c="${h.temperatureC}" data-temp-f="${h.temperatureF}">
                     ${formatTempDisplay(h.temperatureC, h.temperatureF, true)}
                 </div>
@@ -527,7 +529,8 @@ function updateHeroCard(data) {
                     `<div class="small text-info fw-semibold"><i class="bi bi-droplet-fill small"></i>${h.precipitationProbability}%</div>` :
                     `<div class="small text-white-50">-</div>`}
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 }
 

@@ -244,6 +244,12 @@ main {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+.hero-weather-card .weather-hero-icon.text-primary,
+.hero-weather-card .weather-hero-icon.bi-cloud-drizzle-fill,
+.hero-weather-card .weather-hero-icon.bi-cloud-rain-heavy-fill {
+    color: #ffffff !important;
+}
+
 .weather-hero-icon {
     font-size: 5rem;
     display: inline-block;
@@ -1116,10 +1122,63 @@ main {
     transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease, color 0.3s ease;
 }
 
+/* Las nubecitas de las cards de 24 horas deben ser blancas, no azules */
+.hourly-card-white i.bi-cloud-drizzle-fill,
+.hourly-card-white i.bi-cloud-rain-heavy-fill,
+.hourly-card-white i.bi-cloud-fill,
+.hourly-card-white i.bi-clouds-fill,
+.hourly-card-white i.bi-cloud-fog2,
+.hourly-card-white i.bi-snow,
+.hourly-card-white i.text-primary,
+.hourly-card-white i.text-secondary {
+    color: #ffffff !important;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+.hourly-card-white i.bi-sun-fill,
+.hourly-card-white i.bi-cloud-sun-fill,
+.hourly-card-white i.bi-brightness-high-fill,
+.hourly-card-white i.bi-cloud-lightning-rain-fill {
+    color: #facc15 !important;
+}
+
+.hourly-card-white i.bi-moon-stars-fill,
+.hourly-card-white i.bi-cloud-moon-fill,
+.hourly-card-white i.bi-moon-fill {
+    color: #a5f3fc !important;
+}
+
 .hourly-card-white:hover i.fs-3 {
     animation: hourlyIconBounce 1.1s ease-in-out infinite;
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
-    color: #fef08a !important; /* Brillo dorado reactivo en el icono */
+}
+
+/* En hover: las nubecitas se mantienen blancas radiantes con halo suave */
+.hourly-card-white:hover i.bi-cloud-drizzle-fill,
+.hourly-card-white:hover i.bi-cloud-rain-heavy-fill,
+.hourly-card-white:hover i.bi-cloud-fill,
+.hourly-card-white:hover i.bi-clouds-fill,
+.hourly-card-white:hover i.bi-cloud-fog2,
+.hourly-card-white:hover i.bi-snow,
+.hourly-card-white:hover i.text-primary,
+.hourly-card-white:hover i.text-secondary {
+    color: #ffffff !important;
+    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.95)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+
+.hourly-card-white:hover i.bi-sun-fill,
+.hourly-card-white:hover i.bi-cloud-sun-fill,
+.hourly-card-white:hover i.bi-brightness-high-fill,
+.hourly-card-white:hover i.bi-cloud-lightning-rain-fill {
+    color: #fef08a !important;
+    filter: drop-shadow(0 0 12px rgba(254, 240, 138, 0.85)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+
+.hourly-card-white:hover i.bi-moon-stars-fill,
+.hourly-card-white:hover i.bi-cloud-moon-fill,
+.hourly-card-white:hover i.bi-moon-fill {
+    color: #cffafe !important;
+    filter: drop-shadow(0 0 12px rgba(207, 250, 254, 0.85)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
 }
 
 .hourly-card-white .bi-droplet-fill {
