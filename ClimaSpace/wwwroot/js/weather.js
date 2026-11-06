@@ -635,7 +635,6 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
         zoomControl: true,
         attributionControl: false
     });
-    window.radarMap = radarMap;
 
     // 1. Capa Base Principal: Esri Light Gray Canvas (Nativo, limpio, sin marcas de agua y SIN saturación de departamentos)
     const esriLightBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -676,11 +675,6 @@ function initWeatherRadar(lat, lon, cityName, currentTemp, conditionDesc, precip
     if (!radarMap.getPane('dopplerEchoPane')) {
         radarMap.createPane('dopplerEchoPane');
         radarMap.getPane('dopplerEchoPane').style.zIndex = 420;
-    }
-
-    // Inicializar capa de viento si está activa
-    if (window.onRadarMapInitialized) {
-        window.onRadarMapInitialized(radarMap);
     }
 
     // 4. Agregar PUNTOS AZULITOS interactivos en el mapa

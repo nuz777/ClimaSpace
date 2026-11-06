@@ -82,12 +82,10 @@
                             </div>
                         </div>
 
-                        <!-- Botón de activación de la Capa de Viento en el Radar -->
-                        <button type="button" id="btnToggleWindLayer" onclick="toggleWindLayer()" 
-                                class="btn btn-sm btn-info text-dark fw-bold rounded-pill px-3 shadow-sm" 
-                                title="Activar o desactivar capa de viento MSN">
+                        <!-- Enlace directo al Mapa de Viento Animado -->
+                        <a asp-controller="Home" asp-action="Viento" class="btn btn-sm btn-info text-dark fw-bold rounded-pill px-3 shadow-sm text-decoration-none">
                             <i class="bi bi-wind me-1"></i>Mapa de Viento
-                        </button>
+                        </a>
                         <!-- Botón Pantalla Completa -->
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm fw-semibold" id="btnRadarFullscreen" onclick="toggleRadarFullscreen()" title="Ver radar a pantalla completa">
                             <i class="bi bi-arrows-fullscreen me-1" id="btnFullscreenIcon"></i><span id="btnFullscreenText">Pantalla Completa</span>
@@ -104,24 +102,6 @@
                     <button type="button" class="radar-floating-btn shadow-sm" id="btnFloatingFullscreen" onclick="toggleRadarFullscreen()" title="Pantalla Completa">
                         <i class="bi bi-arrows-fullscreen" id="floatingFullscreenIcon"></i>
                     </button>
-
-                    <!-- Leyenda pequeña de Viento MSN (0 - 100 km/h) -->
-                    <div id="windLegendBox" class="wind-legend-container d-none">
-                        <div class="wind-legend-title">
-                            <span><i class="bi bi-wind me-1"></i>Viento</span>
-                            <span class="wind-legend-unit">km/h</span>
-                        </div>
-                        <div class="wind-legend-bar"></div>
-                        <div class="wind-legend-ticks">
-                            <span>0</span>
-                            <span>10</span>
-                            <span>20</span>
-                            <span>35</span>
-                            <span>55</span>
-                            <span>70</span>
-                            <span>100</span>
-                        </div>
-                    </div>
 
                     <!-- Contenedor Flotante de Ciudad Seleccionada en Pantalla Completa -->
                     <div class="radar-fullscreen-city-slot d-none" id="radarFullscreenCitySlot">
