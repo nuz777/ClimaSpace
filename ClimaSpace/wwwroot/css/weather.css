@@ -760,51 +760,6 @@ main {
     flex-wrap: wrap;
 }
 
-.radar-color-segments {
-    display: flex;
-    align-items: center;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.radar-color-segments:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-}
-
-.radar-color-pill {
-    padding: 0.25rem 0.65rem;
-    font-size: 0.73rem;
-    font-weight: 700;
-    color: #ffffff;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    user-select: none;
-    cursor: pointer;
-    transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
-}
-
-.radar-color-pill:hover {
-    transform: scale(1.05);
-    filter: brightness(1.12);
-}
-
-.radar-color-pill.active-level {
-    box-shadow: inset 0 0 0 2px #ffffff, 0 0 10px rgba(0,0,0,0.4);
-    transform: scale(1.08);
-    z-index: 2;
-}
-
-.radar-color-pill.c-green { background-color: #10b981; }
-.radar-color-pill.c-yellow { background-color: #eab308; color: #0f172a; }
-.radar-color-pill.c-orange { background-color: #f97316; }
-.radar-color-pill.c-red { background-color: #ef4444; }
-.radar-color-pill.c-purple { background-color: #8b5cf6; }
-
 /* Lienzo Canvas de Radar Doppler Realista (IDW + Simplex Noise) */
 .doppler-radar-canvas {
     position: absolute;
