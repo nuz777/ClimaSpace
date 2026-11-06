@@ -1,0 +1,134 @@
+name: Docker Container Build, Test & Publish to GitHub Packages
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-test-and-publish:
+    name: Build, Test & Publish Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore & Build Solution
+        run: dotnet build ClimaSpace/ClimaSpace.csproj -c Release
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Docker metadata (Tags & Labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=short
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Build Docker image locally for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: climaspace-test:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Smoke Tests with Docker Image
+        run: |
+          echo "=========================================================="
+          echo "🚀 1. Iniciando contenedor de prueba en segundo plano..."
+          echo "=========================================================="
+          docker run -d --name climaspace-ci-test -p 8080:8080 climaspace-test:local
+
+          echo "⏳ 2. Esperando a que el contenedor de ASP.NET Core responda..."
+          timeout 45 bash -c 'until curl -sf http://localhost:8080/ > /dev/null 2>&1; do sleep 1; done'
+
+          echo "🧪 3. Verificando código HTTP 200 en la ruta raíz (/)..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          echo "Status Code recibido: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Error: La aplicación respondió con código $HTTP_STATUS"
+            docker logs climaspace-ci-test
+            exit 1
+          fi
+          echo "✅ Ruta principal respondió HTTP 200 OK"
+
+          echo "🧪 4. Verificando que el HTML renderizado contenga 'ClimaSpace'..."
+          HTML_OUTPUT=$(curl -s http://localhost:8080/)
+          if ! echo "$HTML_OUTPUT" | grep -q "ClimaSpace"; then
+            echo "❌ Error: No se encontró la marca 'ClimaSpace' en el HTML"
+            docker logs climaspace-ci-test
+            exit 1
+          fi
+          echo "✅ Contenido HTML validado correctamente"
+
+          echo "🧪 5. Verificando API de clima en vivo (/Home/GetWeatherData)..."
+          API_RES=$(curl -s "http://localhost:8080/Home/GetWeatherData?city=Bogota&provider=live")
+          if ! echo "$API_RES" | grep -q '"city"'; then
+            echo "❌ Error: Endpoint de clima no retornó objeto JSON válido"
+            echo "Respuesta recibida: $API_RES"
+            docker logs climaspace-ci-test
+            exit 1
+          fi
+          echo "✅ Endpoint de clima respondió exitosamente con JSON estructurado"
+
+          echo "🧪 6. Verificando ruta de Mapa de Viento (/Home/Viento)..."
+          VIENTO_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/Home/Viento)
+          if [ "$VIENTO_STATUS" != "200" ]; then
+            echo "❌ Error: /Home/Viento respondió con código $VIENTO_STATUS"
+            docker logs climaspace-ci-test
+            exit 1
+          fi
+          echo "✅ Mapa de viento respondió HTTP 200 OK"
+
+          echo "📜 7. Logs generados por el contenedor durante las pruebas:"
+          docker logs climaspace-ci-test
+
+          echo "🧹 8. Limpiando contenedor de pruebas..."
+          docker stop climaspace-ci-test
+          docker rm climaspace-ci-test
+          echo "🎉 ¡Todas las pruebas sobre la imagen Docker pasaron exitosamente!"
+
+      - name: Log in to GitHub Container Registry (ghcr.io)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Docker image to GitHub Packages
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -23,7 +23,7 @@
         const icon = document.getElementById('themeToggleIcon');
         const btn = document.getElementById('btnThemeToggle');
         if (icon) {
-            icon.className = isDark ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars-fill';
+            icon.className = isDark ? 'bi bi-sun-fill text-white' : 'bi bi-moon-stars-fill';
         }
         if (btn) {
             btn.title = isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro';

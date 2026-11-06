@@ -425,33 +425,33 @@ main {
     height: 100% !important;
 }
 
-/* Botón Flotante Pantalla Completa en el Mapa */
+/* Botón Flotante Pantalla Completa en el Mapa (Ubicado en esquina inferior derecha para NO tapar el selector de capas) */
 .radar-floating-btn {
     position: absolute;
-    top: 14px;
+    bottom: 18px;
     right: 14px;
     z-index: 520;
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(0, 0, 0, 0.15);
     color: #1e293b;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .radar-floating-btn:hover {
     background: #ffffff;
     transform: scale(1.08);
     color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 /* ==========================================================================
@@ -505,6 +505,12 @@ main {
         width: auto;
         max-width: none;
         max-height: 52vh;
+    }
+
+    .radar-card.is-fullscreen .radar-floating-btn {
+        bottom: auto;
+        top: 14px;
+        left: 54px;
     }
 }
 
@@ -1217,40 +1223,70 @@ main {
     --shadow-lg: 0 18px 45px rgba(0, 0, 0, 0.55);
 }
 
-/* Botón de alternancia de tema en Navbar */
+/* Botón de alternancia de tema en Navbar (Sin bordes/anillos azules indeseados) */
 .btn-theme-toggle {
     background: #f1f5f9;
-    border: 1px solid #cbd5e1;
-    color: #334155;
+    border: 1px solid #cbd5e1 !important;
+    color: #334155 !important;
     padding: 0.35rem 0.75rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: 0.95rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: none !important;
+    outline: none !important;
     transition: all 0.25s ease;
     cursor: pointer;
 }
 
 .btn-theme-toggle:hover {
     background: #e2e8f0;
-    color: #0f172a;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.btn-theme-toggle:focus,
+.btn-theme-toggle:active,
+.btn-theme-toggle:focus:active,
+.btn-theme-toggle:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: #cbd5e1 !important;
 }
 
 .dark-mode .btn-theme-toggle {
     background: #1e293b;
-    border-color: #475569;
-    color: #facc15;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    border-color: #475569 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 .dark-mode .btn-theme-toggle:hover {
     background: #334155;
-    color: #fef08a;
+    color: #ffffff !important;
+    border-color: #64748b !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(250, 204, 21, 0.2);
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.dark-mode .btn-theme-toggle:focus,
+.dark-mode .btn-theme-toggle:active,
+.dark-mode .btn-theme-toggle:focus:active,
+.dark-mode .btn-theme-toggle:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: #475569 !important;
+    color: #ffffff !important;
+}
+
+.dark-mode #themeToggleIcon,
+.dark-mode .btn-theme-toggle i {
+    color: #ffffff !important;
 }
 
 /* Fondo principal de la aplicación en modo oscuro */

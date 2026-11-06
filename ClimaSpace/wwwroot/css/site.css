@@ -12,6 +12,19 @@ html {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
+/* Remover borde/anillo azul en el botón de alternancia de tema */
+.btn-theme-toggle:focus,
+.btn-theme-toggle:active,
+.btn-theme-toggle:focus:active,
+.btn-theme-toggle:focus-visible,
+.dark-mode .btn-theme-toggle:focus,
+.dark-mode .btn-theme-toggle:active,
+.dark-mode .btn-theme-toggle:focus:active,
+.dark-mode .btn-theme-toggle:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 html, body {
   min-height: 100%;
 }
