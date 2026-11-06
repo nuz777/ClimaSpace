@@ -1,0 +1,12 @@
+services:
+  climaspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: climaspace-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080

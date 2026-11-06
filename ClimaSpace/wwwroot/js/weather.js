@@ -3,7 +3,7 @@
 // ==========================================================================
 
 let currentUnit = 'C';
-let currentProvider = window.currentProvider || 'live';
+let currentProvider = 'live';
 let currentCityName = (window.cityCoordinates && window.cityCoordinates.name) || 'Bogotá';
 
 let radarMap = null;
@@ -336,15 +336,15 @@ async function selectCity(cityName) {
     if (btnText) btnText.textContent = 'Cargando...';
 
     try {
-        const response = await fetch(`/Home/GetWeatherData?city=${encodeURIComponent(cityName)}&provider=${encodeURIComponent(currentProvider)}`);
+        const response = await fetch(`/Home/GetWeatherData?city=${encodeURIComponent(cityName)}&provider=live`);
         if (!response.ok) throw new Error("Error al consultar datos");
 
         const data = await response.json();
         currentCityName = data.city;
 
         // Actualizar URL en el navegador sin recargar la página
-        const newUrl = `/?city=${encodeURIComponent(data.city)}&provider=${encodeURIComponent(currentProvider)}`;
-        window.history.pushState({ city: data.city, provider: currentProvider }, '', newUrl);
+        const newUrl = `/?city=${encodeURIComponent(data.city)}`;
+        window.history.pushState({ city: data.city }, '', newUrl);
         document.title = `${data.city} - Radar y Clima - ClimaSpace`;
 
         // Actualizar input de búsqueda
@@ -465,8 +465,8 @@ function updateSelectedCard(data) {
     if (elHum) elHum.textContent = `${data.current.humidity}%`;
     if (elWind) elWind.textContent = `${data.current.windSpeedKmh} km/h`;
     if (elBadge) {
-        elBadge.className = data.isLiveApi ? 'badge bg-success rounded-pill px-2 py-1 small' : 'badge bg-warning text-dark rounded-pill px-2 py-1 small';
-        elBadge.textContent = data.isLiveApi ? 'En Vivo' : 'Simulado';
+        elBadge.className = 'badge bg-success rounded-pill px-2 py-1 small';
+        elBadge.innerHTML = '<i class="bi bi-broadcast me-1"></i>En Vivo';
     }
 
     if (isFullscreenCityCardCollapsed) {

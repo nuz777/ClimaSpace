@@ -1198,9 +1198,24 @@ main {
 }
 
 /* ==========================================================================
-   Modo Oscuro (Dark Mode) - Exterior, Navbar, Footer y Buscador
-   * NO AFECTA EL CONTENEDOR DE CARDS NI LOS MAPAS *
+   Modo Oscuro (Dark Mode) - Aplicación Completa (Incluye Contenedores y Cards)
    ========================================================================== */
+
+:root.dark-mode,
+.dark-mode {
+    --color-bg: #0b0f19;
+    --color-card-bg: #111827;
+    --color-card-border: #1f2937;
+    --color-card-border-hover: #374151;
+    --color-text-title: #f8fafc;
+    --color-text-body: #cbd5e1;
+    --color-text-muted: #94a3b8;
+    --color-soft-blue: #1e293b;
+    --color-soft-blue-border: #334155;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 18px 45px rgba(0, 0, 0, 0.55);
+}
 
 /* Botón de alternancia de tema en Navbar */
 .btn-theme-toggle {
@@ -1324,15 +1339,6 @@ body.weather-app-body.dark-mode {
     color: #94a3b8 !important;
 }
 
-.dark-mode .provider-toggle-group {
-    background: #1e293b !important;
-    border-color: #334155 !important;
-}
-
-.dark-mode .provider-pill {
-    color: #94a3b8;
-}
-
 .dark-mode .city-pill-white {
     background: #1e293b !important;
     border-color: #334155 !important;
@@ -1344,6 +1350,245 @@ body.weather-app-body.dark-mode {
     background: rgba(37, 99, 235, 0.25) !important;
     color: #60a5fa !important;
     border-color: #3b82f6 !important;
+}
+
+/* ==========================================================================
+   Contenedores y Tarjetas en Modo Oscuro
+   ========================================================================== */
+
+/* Tarjetas Blancas Generales (Radar Card, Pronóstico 7 Días) */
+.dark-mode .white-card {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .white-card:hover {
+    border-color: #374151 !important;
+}
+
+/* Tarjeta Destacada "El tiempo ahora en: [Ciudad]" */
+.dark-mode .selected-city-card {
+    background: #111827 !important;
+    border-color: #2563eb !important;
+    color: #cbd5e1 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
+}
+
+.dark-mode .selected-city-card .bg-light {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .selected-city-card .text-dark {
+    color: #f8fafc !important;
+}
+
+.dark-mode .selected-city-card .text-secondary {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .selected-city-card .badge.bg-light {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .selected-city-card .bg-primary.bg-opacity-10 {
+    background-color: rgba(37, 99, 235, 0.2) !important;
+    color: #93c5fd !important;
+}
+
+/* Tarjeta Hero en Modo Oscuro */
+.dark-mode .hero-weather-card {
+    background: linear-gradient(135deg, #090d16 0%, #0f172a 45%, #172554 100%) !important;
+    border: 1px solid rgba(59, 130, 246, 0.28) !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark-mode .hero-country-badge {
+    background: rgba(15, 23, 42, 0.65) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.dark-mode .hero-btn-api {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+.dark-mode .hero-btn-api span {
+    color: #93c5fd !important;
+}
+
+.dark-mode .hero-btn-api i {
+    color: #60a5fa !important;
+}
+
+.dark-mode .hero-btn-api:hover {
+    background: #334155 !important;
+}
+
+.dark-mode .hero-btn-api:hover span {
+    color: #bfdbfe !important;
+}
+
+/* Tarjetas de Pronóstico de 24 Horas en Modo Oscuro */
+.dark-mode .hourly-card-white {
+    background: rgba(15, 23, 42, 0.5) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.dark-mode .hourly-card-white:hover {
+    background: rgba(30, 41, 59, 0.75) !important;
+    border-color: rgba(96, 165, 250, 0.6) !important;
+}
+
+/* Lista de Pronóstico a 7 Días en Modo Oscuro */
+.dark-mode .daily-row-white {
+    border-bottom-color: #1f2937 !important;
+}
+
+.dark-mode .daily-row-white:hover {
+    background: #1e293b !important;
+}
+
+.dark-mode .daily-row-white .text-dark {
+    color: #f8fafc !important;
+}
+
+.dark-mode .daily-row-white .text-muted {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .temp-bar-bg-blue {
+    background: #1e293b !important;
+}
+
+/* Grilla de Métricas Secundarias en Modo Oscuro */
+.dark-mode .stat-box-white {
+    background: #111827 !important;
+    border-color: #1f2937 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .stat-box-white:hover {
+    background: #172033 !important;
+    border-color: #3b82f6 !important;
+}
+
+.dark-mode .stat-box-white .stat-icon-circle {
+    background: #1e293b !important;
+    color: #60a5fa !important;
+}
+
+.dark-mode .stat-box-white .stat-label-clean {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .stat-box-white .stat-value-clean {
+    color: #f8fafc !important;
+}
+
+/* Radar Doppler: Encabezado, Controles y Modales en Modo Oscuro */
+.dark-mode .radar-header {
+    background: #111827 !important;
+    border-bottom-color: #1f2937 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .radar-controls-bar {
+    background: #111827 !important;
+    border-top-color: #1f2937 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .radar-floating-btn {
+    background: rgba(17, 24, 39, 0.9) !important;
+    border-color: #374151 !important;
+    color: #f8fafc !important;
+}
+
+.dark-mode .radar-card.is-fullscreen .radar-header,
+.dark-mode .radar-card.is-fullscreen .radar-controls-bar {
+    background: #111827 !important;
+}
+
+.dark-mode .radar-fullscreen-city-slot .selected-city-card {
+    background: rgba(17, 24, 39, 0.95) !important;
+    border-color: #3b82f6 !important;
+}
+
+.dark-mode .radar-hurricanes-dropdown {
+    background: #111827 !important;
+    border-color: #374151 !important;
+}
+
+.dark-mode .radar-hurricane-item {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .radar-hurricane-item:hover {
+    background: #2a1b24 !important;
+    border-color: #f87171 !important;
+}
+
+.dark-mode .doppler-guide-item {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+/* Auxiliares de texto y utilidades Bootstrap en Modo Oscuro */
+.dark-mode .text-dark {
+    color: #f8fafc !important;
+}
+
+.dark-mode .text-secondary {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .text-muted {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .bg-light {
+    background-color: #1e293b !important;
+}
+
+.dark-mode .border-bottom {
+    border-bottom-color: #1f2937 !important;
+}
+
+.dark-mode .border-top {
+    border-top-color: #1f2937 !important;
+}
+
+.dark-mode .bg-primary-subtle {
+    background-color: rgba(37, 99, 235, 0.22) !important;
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark-mode .bg-success-subtle {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.dark-mode .badge.bg-light {
+    background-color: #1e293b !important;
+    border-color: #374151 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .badge-brand {
+    background: #1e293b !important;
+    color: #60a5fa !important;
+    border-color: #334155 !important;
 }
 
 /* Modales auxiliares */
@@ -1360,4 +1605,254 @@ body.weather-app-body.dark-mode {
 
 .dark-mode .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ==========================================================================
+   DISEÑO 100% RESPONSIVE (Móviles, Tablets y Escritorio)
+   ========================================================================== */
+
+/* Reglas Globales Anti-Overflow */
+html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+}
+
+/* Tablets Grandes y Laptops Pequeñas (≤ 991.98px) */
+@media (max-width: 991.98px) {
+    .radar-map-wrapper {
+        height: 380px;
+    }
+
+    .hero-weather-card {
+        padding: 1.8rem;
+    }
+
+    .temp-large {
+        font-size: 4rem;
+    }
+
+    .weather-hero-icon {
+        font-size: 4.2rem;
+    }
+}
+
+/* Teléfonos y Tablets en Vertical (≤ 767.98px) */
+@media (max-width: 767.98px) {
+    .container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    /* Buscador Adaptable */
+    .search-wrapper-white {
+        position: relative;
+    }
+
+    .search-input-white {
+        padding-left: 2.6rem !important;
+        padding-right: 96px !important;
+        font-size: 0.92rem !important;
+        height: 48px;
+    }
+
+    .search-icon-blue {
+        left: 0.95rem;
+        font-size: 1rem;
+    }
+
+    #searchSubmitBtn {
+        padding: 0.4rem 1rem !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Cinta de Ciudades Populares con Desplazamiento Suave */
+    #popularCitiesContainer {
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+        padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    #popularCitiesContainer::-webkit-scrollbar {
+        display: none;
+    }
+
+    .city-pill-white {
+        flex-shrink: 0;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.82rem;
+    }
+
+    /* Radar Doppler */
+    .radar-header {
+        padding: 0.85rem 1rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .radar-header > div:first-child {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .radar-header > div:last-child {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .radar-header .btn {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.7rem;
+        flex-grow: 1;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .radar-map-wrapper {
+        height: 330px;
+    }
+
+    .radar-controls-bar {
+        padding: 0.75rem 1rem;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem;
+    }
+
+    .radar-controls-bar > div:first-child {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .radar-legend-group {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* Tarjeta Hero */
+    .hero-weather-card {
+        padding: 1.35rem 1.15rem;
+    }
+
+    .hero-country-badge {
+        font-size: 0.78rem;
+        padding: 0.25rem 0.65rem;
+    }
+
+    .hero-btn-api {
+        font-size: 0.78rem;
+        padding: 0.35rem 0.85rem;
+    }
+
+    .temp-large {
+        font-size: clamp(2.8rem, 11vw, 3.8rem);
+        letter-spacing: -1px;
+    }
+
+    .temp-unit {
+        font-size: 1.6rem;
+    }
+
+    .weather-hero-icon {
+        font-size: clamp(3rem, 12vw, 4.2rem);
+    }
+
+    /* Pronóstico 24 Horas */
+    .hourly-scroll-white {
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        gap: 0.55rem;
+    }
+
+    .hourly-card-white {
+        scroll-snap-align: start;
+        min-width: 76px;
+        padding: 0.75rem 0.5rem;
+    }
+
+    /* Tarjeta de Ciudad Seleccionada */
+    .selected-city-card {
+        padding: 1.25rem 1rem;
+    }
+
+    /* Grilla de Métricas Secundarias */
+    .stat-box-white {
+        padding: 0.85rem 0.75rem;
+        gap: 0.65rem;
+    }
+
+    .stat-icon-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 1.15rem;
+        border-radius: 12px;
+    }
+
+    .stat-label-clean {
+        font-size: 0.72rem;
+    }
+
+    .stat-value-clean {
+        font-size: 1.1rem;
+    }
+}
+
+/* Teléfonos Pequeños (≤ 479.98px) */
+@media (max-width: 479.98px) {
+    .radar-map-wrapper {
+        height: 285px;
+    }
+
+    .hero-weather-card {
+        padding: 1.15rem 0.95rem;
+    }
+
+    .temp-large {
+        font-size: 2.6rem;
+    }
+
+    .weather-hero-icon {
+        font-size: 2.8rem;
+    }
+
+    .stat-box-white {
+        padding: 0.7rem 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .stat-icon-circle {
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
+        border-radius: 10px;
+    }
+
+    .stat-value-clean {
+        font-size: 0.98rem;
+    }
+
+    .stat-label-clean {
+        font-size: 0.68rem;
+    }
+
+    .hero-btn-api {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+    }
+
+    .search-input-white {
+        font-size: 0.86rem !important;
+        padding-right: 88px !important;
+    }
+
+    #searchSubmitBtn {
+        padding: 0.35rem 0.85rem !important;
+        font-size: 0.8rem !important;
+    }
 }

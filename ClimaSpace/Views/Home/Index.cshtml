@@ -9,7 +9,7 @@
         <div class="col-lg-12">
             <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
                 <!-- Buscador de Ciudades AJAX (Sin recargar página) -->
-                <form id="citySearchForm" class="search-wrapper-white flex-grow-1" onsubmit="handleSearchSubmit(event)">
+                <form id="citySearchForm" class="search-wrapper-white w-100" onsubmit="handleSearchSubmit(event)">
                     <i class="bi bi-search search-icon-blue"></i>
                     <input type="text" 
                            id="citySearchInput"
@@ -23,18 +23,6 @@
                         <span id="searchBtnText">Buscar</span>
                     </button>
                 </form>
-
-                <!-- Selector de Proveedor (Live API vs Simulación - Sin recargar página) -->
-                <div class="provider-toggle-group">
-                    <button type="button" id="providerLiveBtn" onclick="switchProvider('live')"
-                            class="provider-pill border-0 @(Model.Provider == "live" ? "active" : "")">
-                        <i class="bi bi-broadcast"></i> API en Vivo
-                    </button>
-                    <button type="button" id="providerSimBtn" onclick="switchProvider('simulated')"
-                            class="provider-pill border-0 @(Model.Provider == "simulated" ? "active" : "")">
-                        <i class="bi bi-cpu"></i> Simulado
-                    </button>
-                </div>
             </div>
 
             <!-- Accesos rápidos a ciudades y regiones -->
@@ -174,8 +162,8 @@
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1 fw-bold small">
                             <i class="bi bi-geo-alt-fill me-1"></i>Punto Activo en Radar
                         </span>
-                        <span id="selectedCardProviderBadge" class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
-                            @(Model.IsLiveApi ? "En Vivo" : "Simulado")
+                        <span id="selectedCardProviderBadge" class="badge bg-success rounded-pill px-2 py-1 small">
+                            <i class="bi bi-broadcast me-1"></i>En Vivo
                         </span>
                     </div>
 
@@ -261,9 +249,8 @@
                                 <i class="bi bi-geo-alt-fill"></i>
                                 <span id="heroCountryText">@(string.IsNullOrWhiteSpace(Model.Country) ? "Colombia" : Model.Country)</span>
                             </span>
-                            <span id="heroProviderBadge" class="badge @(Model.IsLiveApi ? "bg-success" : "bg-warning text-dark") rounded-pill px-2 py-1 small">
-                                <i class="bi @(Model.IsLiveApi ? "bi-check-circle-fill" : "bi-gear-wide-connected") me-1"></i>
-                                @(Model.IsLiveApi ? "Datos en Vivo (Open-Meteo)" : "Modo Simulación")
+                            <span id="heroProviderBadge" class="badge bg-success rounded-pill px-3 py-1 small">
+                                <i class="bi bi-broadcast me-1"></i>Datos en Vivo (Open-Meteo)
                             </span>
                         </div>
                         <p class="text-white-50 mb-0 small">

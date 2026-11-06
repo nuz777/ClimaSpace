@@ -1,0 +1,14 @@
+**/.git
+**/.github
+**/.vs
+**/.idea
+**/*.user
+**/bin
+**/obj
+**/TestResults
+**/*.slnx
+README.md
+LICENSE
+.dockerignore
+Dockerfile
+docker-compose.yml
