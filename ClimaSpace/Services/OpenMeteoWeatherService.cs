@@ -81,6 +81,29 @@ public class OpenMeteoWeatherService : IWeatherService
             string country = firstResult.TryGetProperty("country", out var cProp) ? (cProp.GetString() ?? "") : "";
             string region = firstResult.TryGetProperty("admin1", out var rProp) ? (rProp.GetString() ?? "") : "";
 
+            // Garantizar país reconocible
+            if (string.IsNullOrWhiteSpace(country))
+            {
+                if (cityName.Contains("Colombia", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("bogota", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("medellin", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("barranquilla", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("cali", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("cartagena", StringComparison.OrdinalIgnoreCase) ||
+                    cityName.Contains("juan mina", StringComparison.OrdinalIgnoreCase))
+                {
+                    country = "Colombia";
+                }
+                else if (cityName.Contains(','))
+                {
+                    country = cityName.Split(',').Last().Trim();
+                }
+                else
+                {
+                    country = "Colombia";
+                }
+            }
+
             // Preservar nombres canónicos solicitados por el usuario
             if (cityName.Equals("Mississippi", StringComparison.OrdinalIgnoreCase) || cityName.Equals("missipi", StringComparison.OrdinalIgnoreCase))
                 resolvedName = "Mississippi";

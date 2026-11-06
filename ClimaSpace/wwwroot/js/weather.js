@@ -488,7 +488,14 @@ function updateHeroCard(data) {
     const elStatus = document.getElementById('heroStatusText');
 
     if (elCity) elCity.textContent = data.city;
-    if (elCountry) elCountry.textContent = data.country;
+    if (elCountry) {
+        let countryName = data.country;
+        if (!countryName && data.city && data.city.includes(',')) {
+            countryName = data.city.split(',').pop().trim();
+        }
+        if (!countryName) countryName = 'Colombia';
+        elCountry.innerHTML = `<i class="bi bi-geo-alt-fill text-warning"></i> <span id="heroCountryText">${countryName}</span>`;
+    }
     if (elCoords) elCoords.textContent = `Lat: ${data.latitude}, Lon: ${data.longitude}`;
     if (elStatus) elStatus.textContent = `Actualizado para ${data.city}`;
     if (elTemp) {
@@ -506,11 +513,11 @@ function updateHeroCard(data) {
     if (elSunrise) elSunrise.textContent = data.current.sunrise;
     if (elSunset) elSunset.textContent = data.current.sunset;
 
-    // Actualizar cinta horizontal de 24 horas
+    // Actualizar cinta horizontal de 24 horas con animación escalonada
     const hourlyContainer = document.getElementById('hourlyForecastContainer');
     if (hourlyContainer && data.hourly) {
-        hourlyContainer.innerHTML = data.hourly.map(h => `
-            <div class="hourly-card-white">
+        hourlyContainer.innerHTML = data.hourly.map((h, idx) => `
+            <div class="hourly-card-white" style="animation-delay: ${idx * 35}ms;">
                 <div class="small text-white-50 mb-1">${h.time}</div>
                 <i class="bi ${h.iconClass} fs-3 my-2 d-block"></i>
                 <div class="fw-bold mb-1" data-temp-c="${h.temperatureC}" data-temp-f="${h.temperatureF}">

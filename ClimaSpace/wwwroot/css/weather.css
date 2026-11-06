@@ -172,6 +172,78 @@ main {
     pointer-events: none;
 }
 
+/* Badge de País con Alto Contraste y Vidrio Esmerilado */
+.hero-country-badge {
+    background: rgba(15, 23, 42, 0.42);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.84rem;
+    padding: 0.32rem 0.85rem;
+    border-radius: 50px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.hero-country-badge i {
+    color: #facc15;
+    font-size: 0.88rem;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
+/* Botón Info API: Fondo Blanco Sólido con Texto y Sliders en Azul Real Intenso */
+.hero-btn-api {
+    background: #ffffff;
+    color: #1e40af !important;
+    font-weight: 700;
+    font-size: 0.84rem;
+    padding: 0.45rem 1.15rem;
+    border-radius: 50px;
+    border: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-btn-api i {
+    color: #2563eb;
+    font-size: 0.95rem;
+    transition: transform 0.3s ease, color 0.2s ease;
+}
+
+.hero-btn-api span {
+    color: #1e40af !important;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.hero-btn-api:hover {
+    background: #f8fafc;
+    color: #1d4ed8 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.hero-btn-api:hover i {
+    transform: rotate(45deg);
+    color: #1d4ed8;
+}
+
+.hero-btn-api:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 .weather-hero-icon {
     font-size: 5rem;
     display: inline-block;
@@ -957,21 +1029,118 @@ main {
     border-radius: 10px;
 }
 
+/* ==========================================================================
+   Animaciones para las Tarjetas de Pronóstico de 24 Horas
+   ========================================================================== */
+@keyframes hourlyCardEntrance {
+    0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.92);
+    }
+    60% {
+        opacity: 0.9;
+        transform: translateY(-3px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes hourlyIconBounce {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-6px) scale(1.18);
+    }
+}
+
+@keyframes hourlyDropletPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(1.25);
+        opacity: 1;
+    }
+}
+
 .hourly-card-white {
-    min-width: 82px;
+    min-width: 86px;
     text-align: center;
-    padding: 0.9rem 0.6rem;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 0.95rem 0.65rem;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
     color: #ffffff;
     flex-shrink: 0;
-    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: hourlyCardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Efecto de brillo de luz (shimmer) al pasar el cursor */
+.hourly-card-white::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 80%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.65s ease;
+    pointer-events: none;
 }
 
 .hourly-card-white:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.32);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-8px) scale(1.06);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28), 0 0 20px rgba(255, 255, 255, 0.25);
+    z-index: 2;
+}
+
+.hourly-card-white:hover::before {
+    left: 150%;
+}
+
+.hourly-card-white i.fs-3 {
+    display: block;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease, color 0.3s ease;
+}
+
+.hourly-card-white:hover i.fs-3 {
+    animation: hourlyIconBounce 1.1s ease-in-out infinite;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+    color: #fef08a !important; /* Brillo dorado reactivo en el icono */
+}
+
+.hourly-card-white .bi-droplet-fill {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.hourly-card-white:hover .bi-droplet-fill {
+    animation: hourlyDropletPulse 1s ease-in-out infinite;
+}
+
+.hourly-card-white .fw-bold {
+    font-size: 1.05rem;
+    letter-spacing: -0.5px;
+    transition: transform 0.25s ease, color 0.25s ease;
+}
+
+.hourly-card-white:hover .fw-bold {
+    transform: scale(1.1);
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 /* ==========================================================================
