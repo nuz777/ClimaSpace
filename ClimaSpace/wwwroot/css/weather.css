@@ -1196,3 +1196,168 @@ main {
     background: #ffffff;
     border-top: 1px solid var(--color-card-border);
 }
+
+/* ==========================================================================
+   Modo Oscuro (Dark Mode) - Exterior, Navbar, Footer y Buscador
+   * NO AFECTA EL CONTENEDOR DE CARDS NI LOS MAPAS *
+   ========================================================================== */
+
+/* Botón de alternancia de tema en Navbar */
+.btn-theme-toggle {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    padding: 0.35rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.btn-theme-toggle:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark-mode .btn-theme-toggle {
+    background: #1e293b;
+    border-color: #475569;
+    color: #facc15;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.dark-mode .btn-theme-toggle:hover {
+    background: #334155;
+    color: #fef08a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(250, 204, 21, 0.2);
+}
+
+/* Fondo principal de la aplicación en modo oscuro */
+.dark-mode body.weather-app-body,
+body.weather-app-body.dark-mode {
+    background-color: #0b0f19 !important;
+    background-image: 
+        radial-gradient(circle at 10% 15%, rgba(30, 58, 138, 0.22) 0%, transparent 35%),
+        radial-gradient(circle at 90% 85%, rgba(15, 23, 42, 0.5) 0%, transparent 40%) !important;
+    color: #cbd5e1;
+}
+
+/* Navbar en Modo Oscuro */
+.dark-mode .bg-white-nav {
+    background-color: #111827 !important;
+    border-bottom: 1px solid #1f2937 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark-mode .brand-text {
+    color: #f8fafc !important;
+}
+
+.dark-mode .navbar-nav .nav-link {
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .navbar-nav .nav-link:hover {
+    color: #60a5fa !important;
+}
+
+.dark-mode .navbar-nav .nav-link.active {
+    background-color: rgba(37, 99, 235, 0.2) !important;
+    color: #60a5fa !important;
+}
+
+.dark-mode .navbar-toggler i {
+    color: #60a5fa !important;
+}
+
+.dark-mode .unit-toggle-blue .btn-outline-primary {
+    border-color: #3b82f6;
+    color: #93c5fd;
+}
+
+.dark-mode .unit-toggle-blue .btn-outline-primary.active {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.dark-mode .btn-outline-secondary {
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+.dark-mode .btn-outline-secondary:hover {
+    background-color: #334155;
+    color: #ffffff;
+}
+
+/* Footer en Modo Oscuro */
+.dark-mode .footer-clean {
+    background-color: #111827 !important;
+    border-top: 1px solid #1f2937 !important;
+    color: #94a3b8 !important;
+}
+
+.dark-mode .footer-clean .text-secondary {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .footer-clean .badge.bg-light {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #93c5fd !important;
+}
+
+/* Buscador y Píldoras de ciudades superiores en Modo Oscuro */
+.dark-mode .search-input-white {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+.dark-mode .search-input-white::placeholder {
+    color: #94a3b8 !important;
+}
+
+.dark-mode .provider-toggle-group {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+.dark-mode .provider-pill {
+    color: #94a3b8;
+}
+
+.dark-mode .city-pill-white {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
+.dark-mode .city-pill-white:hover,
+.dark-mode .city-pill-white.active {
+    background: rgba(37, 99, 235, 0.25) !important;
+    color: #60a5fa !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Modales auxiliares */
+.dark-mode .modal-content {
+    background-color: #111827 !important;
+    color: #f8fafc !important;
+    border: 1px solid #374151 !important;
+}
+
+.dark-mode .modal-header.bg-light {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}

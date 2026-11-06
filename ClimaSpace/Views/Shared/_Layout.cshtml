@@ -17,6 +17,14 @@
     <!-- Custom Weather Styles: Blanco y Azul -->
     <link rel="stylesheet" href="~/css/weather.css" asp-append-version="true"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('climaspace-theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="weather-app-body">
 <header>
@@ -59,6 +67,11 @@
                         <button type="button" class="btn btn-sm btn-outline-primary active" id="btnCelsius" onclick="setTemperatureUnit('C')">°C</button>
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnFahrenheit" onclick="setTemperatureUnit('F')">°F</button>
                     </div>
+
+                    <!-- Botón de Modo Oscuro / Claro -->
+                    <button type="button" class="btn btn-sm btn-theme-toggle rounded-pill" id="btnThemeToggle" onclick="toggleDarkMode()" title="Cambiar a Modo Oscuro / Claro" aria-label="Cambiar tema">
+                        <i class="bi bi-moon-stars-fill" id="themeToggleIcon"></i>
+                    </button>
 
                     <a href="https://github.com/nuz777/ClimaSpace" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-flex align-items-center gap-2">
                         <i class="bi bi-github"></i>
